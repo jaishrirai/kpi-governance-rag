@@ -21,7 +21,7 @@ Already done before Claude Code: repo skeleton, `requirements.txt`, `.gitignore`
 
 ### 1.1 Environment + smoke test
 - [ ] venv, torch CPU, `pip install -r requirements.txt`, `.env` filled
-- [ ] `python scripts/smoke_test.py`: 384 dims, churn vs attrition similarity, token counts at temp 0 and 1
+- [ ] `python scripts/smoke_test.py` Part A only: 384 dims, churn vs attrition similarity (LLM part moves to Step 2.5)
 - Concepts: Token, Context window, Temperature, Embedding, Cosine similarity
 
 ### 1.2 Synthetic corpus (Low focus, Claude generates)
@@ -35,7 +35,7 @@ Already done before Claude Code: repo skeleton, `requirements.txt`, `.gitignore`
 - [ ] `src/rag/ingest.py`: markdown + YAML, CSV rows, PDF pages, written to `data/processed/documents.jsonl`
 - [ ] Print counts by doc_type; inspect the PDF table text and note its quality in the log
 
-### 1.4 Chunking V1 / V2 / V3 (High)
+### 1.4 Chunking V1 / V2 / V3 (High) [YOU BUILD: V2]
 - [ ] `src/rag/chunking.py` + `tests/test_chunking.py` (caps, unique ids, overlap, V3 = 1 chunk per KPI)
 - [ ] Stats table per variant: count, average tokens, max tokens
 - Concepts: Chunking, Overlap, Parent-child retrieval (say "I would")
@@ -45,7 +45,7 @@ Already done before Claude Code: repo skeleton, `requirements.txt`, `.gitignore`
 - [ ] Sanity queries: "how is churn calculated", "KPI-014", "who owns the customer 360 dashboard"
 - Concepts: Vector store, HNSW, distance vs similarity
 
-### 1.6 BM25 (High)
+### 1.6 BM25 (High) [YOU BUILD]
 - [ ] `bm25_search()` with the code-preserving tokenizer and filters
 - [ ] Compare against vector search on "KPI-014": which wins and why?
 - Concepts: Keyword search, BM25, TF-IDF intuition
@@ -61,22 +61,24 @@ Already done before Claude Code: repo skeleton, `requirements.txt`, `.gitignore`
 - [ ] Claude drafts the remaining ~25 (traps, unanswerables, codes, typos, abbreviations); I review
 - [ ] Validation script: 40 total, 8 unanswerable, 10 holdout, every expected doc_id exists
 
-### 2.2 Retrieval eval (Very High)
+### 2.2 Retrieval eval (Very High) [YOU BUILD: metrics]
 - [ ] `eval/retrieval_eval.py`: recall@5, MRR@10 at document level, dev vs holdout, appended to `results/runs.csv`
 - [ ] Work out MRR by hand for ranks 1, 3, missing, 2 before coding
 - [ ] Baseline: V1 + vector
 
-### 2.3 Hybrid RRF (Very High)
+### 2.3 Hybrid RRF (Very High) [YOU BUILD]
 - [ ] Work one RRF example by hand (rank 1 vector + rank 4 BM25 = 1/61 + 1/64)
 - [ ] `rrf()` + `hybrid_search()` + filter tests
 - [ ] Grid: 3 variants x {vector, BM25, hybrid}, runs 1-9
 - [ ] Error analysis of the 5 worst misses in `results/experiments.md`
 
-### 2.4 Reranker (Very High)
+### 2.4 Reranker (Very High) [YOU BUILD]
 - [ ] `rerank()` with the cross-encoder; runs 10-11 on the best 2 configs; log the added latency
 - Concepts: Bi-encoder vs cross-encoder, "retrieve wide, rerank narrow"
 
-### 2.5 Grounded generation (High)
+### 2.5 Grounded generation (High) [YOU BUILD: citation check]
+- [ ] Get a Gemini API key from Google AI Studio, add `GEMINI_API_KEY`, `LLM_MODEL`, `JUDGE_MODEL` to `.env`, `pip install google-genai`
+- [ ] LLM smoke test: same question at temperature 0 and 1, print token counts
 - [ ] `src/rag/llm.py`, `src/rag/generate.py`, `prompts/answer_v1.txt`
 - [ ] Pydantic validation, citation check in code, one retry, refusal, `results/traces.jsonl`
 - [ ] `src/rag/pipeline.py` + CLI `python -m rag.ask "..."`

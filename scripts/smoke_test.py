@@ -1,14 +1,13 @@
 """
 Smoke test: proves the two engines of RAG work on your machine.
   Part A: EMBEDDING  -> turns text into a vector (list of 384 numbers)
-  Part B: LLM CALL   -> sends text to Claude, shows token counts and the effect of temperature
+  Part B: LLM CALL   -> added at Step 2.5 (Gemini)
 Run from the repo root:  python scripts/smoke_test.py
 """
 import os
 import numpy as np
 from dotenv import load_dotenv
 from sentence_transformers import SentenceTransformer
-import anthropic
 
 load_dotenv()  # reads ANTHROPIC_API_KEY and LLM_MODEL from .env
 
@@ -30,15 +29,4 @@ print(f"sim(churn, attrition)  = {np.dot(vecs[0], vecs[1]):.3f}   <- should be H
 print(f"sim(churn, inventory)  = {np.dot(vecs[0], vecs[2]):.3f}   <- should be LOWER")
 
 # ---------- Part B: LLM call ----------
-client = anthropic.Anthropic()  # picks up ANTHROPIC_API_KEY from env
-question = "Define Net Revenue Retention in one sentence."
-
-for temp in (0, 0, 1, 1):  # two runs at each temperature, so you can compare
-    r = client.messages.create(
-        model=os.environ["LLM_MODEL"],
-        max_tokens=80,
-        temperature=temp,
-        messages=[{"role": "user", "content": question}],
-    )
-    print(f"\n[temp={temp}] in={r.usage.input_tokens} tok, out={r.usage.output_tokens} tok")
-    print(r.content[0].text)
+# Added at Step 2.5 (Gemini free tier). Not needed for retrieval work.

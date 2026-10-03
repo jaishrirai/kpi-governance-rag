@@ -16,7 +16,7 @@ A prototype RAG assistant that answers "How is this KPI defined, who owns it, is
 
 - I am learning RAG engineering to talk about it confidently in interviews. Main goal: **understand every line**, then ship a demo.
 - I am a **beginner with Git and GitHub**. Teach me as we go (see section 6).
-- Working mode: **you write the code, I review and run it.** You explain, I answer questions.
+- Working mode is **split** (see section 3a). I write the core logic myself in "You build" steps. You write the plumbing in "Claude builds" steps, and I review it.
 - My style preferences:
   - Before starting any step, tell me the action items in 2-4 short bullets, then start.
   - Be to the point. No long preambles.
@@ -46,11 +46,41 @@ Pace by focus. Go **deep** on Very High / High areas and keep Low areas quick:
 
 **Do not** run 5 steps in a row silently. Stop at the end of each step.
 
+## 3a. Who writes what
+
+**"You build" steps (I write the code):**
+
+| Step | What I write |
+|---|---|
+| 1.4 | `chunk_by_heading()` (V2). You write V1 and V3 |
+| 1.6 | `tokenize()` and `bm25_search()` |
+| 2.2 | `recall_at_k()` and `mrr_at_k()` at document level |
+| 2.3 | `rrf()` and `hybrid_search()` |
+| 2.4 | `rerank()` |
+| 2.5 | `validate_citations()` (the citation check plus the retry and refusal logic) |
+| 3.1 | The refusal-accuracy and citation-validity scoring in `generation_eval.py` |
+
+**How to run a "You build" step:**
+1. Brief me on the concept (as in section 3), then work 1 small example by hand with me.
+2. Create the file with only the **function signature, a docstring (inputs, outputs, edge cases) and `raise NotImplementedError`**. Do **not** write the body.
+3. Write `pytest` tests first. They fail now, and they pass when my code is right. Tell me the command to run them.
+4. When I'm stuck, give hints in levels, one at a time, only when I ask:
+   - **Hint 1:** the idea in plain words
+   - **Hint 2:** pseudo-code
+   - **Hint 3:** the one or two tricky lines
+   - Show the full solution only if I type "show solution". After that, ask me to retype it from memory in a fresh file.
+5. When the tests pass, review my code like a senior: what's good, 1-2 improvements (readability, edge cases, speed), and how it would change at production scale. Let me make the changes myself.
+
+**"Claude builds" steps (everything else):**
+- After writing a file, give a **walkthrough**: one line per logical block (not per line), in plain words.
+- If I type **"line by line <file>"**, explain every line of that file, including the Python syntax used (list comprehensions, dataclasses, decorators and so on).
+- Keep every file short enough that I can read it in 5 minutes.
+
 ## 4. Locked decisions
 
 | # | Decision | Choice |
 |---|---|---|
-| 1 | LLM | Anthropic API. Haiku-class for answers (`LLM_MODEL`), Sonnet-class as judge (`JUDGE_MODEL`). Every call goes through `src/rag/llm.py::complete()` only |
+| 1 | LLM | **Gemini API free tier** (`google-genai` library, key in `GEMINI_API_KEY`). A fast Flash-class model for answers (`LLM_MODEL`), the strongest free-tier model as judge (`JUDGE_MODEL`). Check current model IDs in Google AI Studio. Every call goes through `src/rag/llm.py::complete()` only, so switching provider (Anthropic, Bedrock) is a one-file change. Note for experiments.md: judge and answer model from the same family can cause self-preference bias, and the 10 hand grades check for it. Free tier has rate limits, so add a small sleep and retry on 429 errors. No LLM key is needed before Step 2.5 |
 | 2 | Embeddings | `BAAI/bge-small-en-v1.5`, local, `normalize_embeddings=True`, 384 dims, 512 token limit |
 | 3 | Vector store | Chroma `PersistentClient(path="data/index")`, `hnsw:space=cosine`, one collection per chunk variant |
 | 4 | Stack | Python 3.12 (3.11 ok), venv at `.venv`, Windows |
@@ -80,5 +110,5 @@ Pace by focus. Go **deep** on Very High / High areas and keep Low areas quick:
 
 - **Never commit `.env`.** Before every push, check that `git ls-files` shows only `.env.example`.
 - If a key is ever pushed: stop, tell me, and help me revoke it in the Anthropic console.
-- I have set a spend cap. Run the judge eval only on the best config and the baseline. Test new LLM code on 3 questions first.
+- Free tier: respect the rate limits. Run the judge eval only on the best config and the baseline. Test new LLM code on 3 questions first.
 - Fill result tables **only from real runs**. Never invent numbers. Label targets as targets.
