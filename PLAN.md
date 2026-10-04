@@ -12,7 +12,7 @@ Already done before Claude Code: repo skeleton, `requirements.txt`, `.gitignore`
 - [x] `git config` name and email; `gh auth login` (browser login)
 - [x] `git init`, first commit of the skeleton (check that `.env` is NOT tracked)
 - [x] `gh repo create kpi-governance-rag --private --source . --push`
-- [ ] Create the labels `day-1`, `day-2`, `day-3` and one issue per step below; create a Project board (To do / Doing / Done)
+- [x] Create the labels `day-1`, `day-2`, `day-3` and one issue per step below; create a Project board (To do / Doing / Done)
 - Explain-it-back: what is the difference between commit and push? Why is `.env` in `.gitignore`?
 
 ---

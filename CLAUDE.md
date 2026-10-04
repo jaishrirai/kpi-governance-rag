@@ -109,6 +109,6 @@ Pace by focus. Go **deep** on Very High / High areas and keep Low areas quick:
 ## 7. Safety rules
 
 - **Never commit `.env`.** Before every push, check that `git ls-files` shows only `.env.example`.
-- If a key is ever pushed: stop, tell me, and help me revoke it in the Anthropic console.
+- If a key is ever pushed: stop, tell me, and help me revoke it in Google AI Studio.
 - Free tier: respect the rate limits. Run the judge eval only on the best config and the baseline. Test new LLM code on 3 questions first.
 - Fill result tables **only from real runs**. Never invent numbers. Label targets as targets.
