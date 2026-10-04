@@ -46,6 +46,12 @@ Pace by focus. Go **deep** on Very High / High areas and keep Low areas quick:
 
 **Do not** run 5 steps in a row silently. Stop at the end of each step.
 
+**Learning-visibility rules (apply to every file):**
+1. After creating or editing a file, tell me the file name and ask me to open it in VS Code before you continue.
+2. For every file you write, give a block-by-block walkthrough, then ask me 1 question about it.
+3. For the corpus (Step 1.2), show me the generator script and one full KPI file, and explain how the others were made.
+4. Never run a big hidden script that writes many files without showing me the script first.
+
 ## 3a. Who writes what
 
 **"You build" steps (I write the code):**
