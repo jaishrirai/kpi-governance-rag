@@ -8,10 +8,10 @@ Already done before Claude Code: repo skeleton, `requirements.txt`, `.gitignore`
 ## Day 0: GitHub setup (30 min, first session only)
 
 ### 0.1 Git and GitHub basics
-- [ ] Check `git --version` and `gh --version` (install Git for Windows and GitHub CLI if missing)
-- [ ] `git config` name and email; `gh auth login` (browser login)
-- [ ] `git init`, first commit of the skeleton (check that `.env` is NOT tracked)
-- [ ] `gh repo create kpi-governance-rag --private --source . --push`
+- [x] Check `git --version` and `gh --version` (install Git for Windows and GitHub CLI if missing)
+- [x] `git config` name and email; `gh auth login` (browser login)
+- [x] `git init`, first commit of the skeleton (check that `.env` is NOT tracked)
+- [x] `gh repo create kpi-governance-rag --private --source . --push`
 - [ ] Create the labels `day-1`, `day-2`, `day-3` and one issue per step below; create a Project board (To do / Doing / Done)
 - Explain-it-back: what is the difference between commit and push? Why is `.env` in `.gitignore`?
 
@@ -20,8 +20,8 @@ Already done before Claude Code: repo skeleton, `requirements.txt`, `.gitignore`
 ## Day 1: Data to searchable index
 
 ### 1.1 Environment + smoke test
-- [ ] venv, torch CPU, `pip install -r requirements.txt`, `.env` filled
-- [ ] `python scripts/smoke_test.py` Part A only: 384 dims, churn vs attrition similarity (LLM part moves to Step 2.5)
+- [x] venv, torch CPU, `pip install -r requirements.txt`, `.env` filled
+- [x] `python scripts/smoke_test.py` Part A only: 384 dims, churn vs attrition similarity (LLM part moves to Step 2.5)
 - Concepts: Token, Context window, Temperature, Embedding, Cosine similarity
 
 ### 1.2 Synthetic corpus (Low focus, Claude generates)
