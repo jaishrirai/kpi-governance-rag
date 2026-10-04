@@ -9,7 +9,7 @@ import numpy as np
 from dotenv import load_dotenv
 from sentence_transformers import SentenceTransformer
 
-load_dotenv()  # reads ANTHROPIC_API_KEY and LLM_MODEL from .env
+load_dotenv()  # reads GEMINI_API_KEY and LLM_MODEL from .env (used from Step 2.5)
 
 # ---------- Part A: embeddings ----------
 # First run downloads the model (~130 MB) and caches it.
