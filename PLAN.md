@@ -25,8 +25,8 @@ Already done before Claude Code: repo skeleton, `requirements.txt`, `.gitignore`
 - Concepts: Token, Context window, Temperature, Embedding, Cosine similarity
 
 ### 1.2 Synthetic corpus (Low focus, Claude generates)
-- [ ] `data/corpus_manifest.csv` (all docs with metadata)
-- [ ] 20 KPI files, 15-row catalog CSV, 8 SOPs, PDFs via reportlab (2 with tables), 2 traps
+- [x] `data/corpus_manifest.csv` (all docs with metadata)
+- [x] 20 KPI files, 15-row catalog CSV, 8 SOPs, PDFs via reportlab (2 with tables), 2 traps
 - [ ] `scripts/check_corpus.py`: consistency checks (ids, owners, linked KPIs, dashboards, size under 1,800 chars)
 - [ ] I skim 10 files and fix anything odd
 - Concepts: Hallucination (via consistency checks), Structured output
