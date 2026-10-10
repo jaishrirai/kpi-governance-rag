@@ -34,6 +34,22 @@ AWS AIF-C01 domain: 3 (Applications of Foundation Models, inference parameters)
 5. Interview line: "Similarity scores are for ranking, not yes/no decisions; I retrieve wide, rerank, then keep the top 5."
 AWS AIF-C01 domain: 2 (Fundamentals of Generative AI), 3 (vector stores for RAG)
 
+## Hallucination + consistency checks (Step 1.2)
+1. What it is: when a model states something confident that is not supported by the documents. A RAG assistant can also repeat a wrong fact that is in its own documents.
+2. Example from P1: the FAQ says Active Customer is 90 days, the certified KPI-006 says 30. check_corpus.py checks owners, versions and links so the documents do not contradict each other by accident.
+3. Why it matters: if the corpus disagrees with itself, a wrong answer would look like a retrieval bug.
+4. Industry name: grounding, data quality checks, source of truth.
+5. Interview line: "Before tuning retrieval I validated the corpus, because inconsistent sources make good retrieval return bad answers."
+AWS AIF-C01 domain: 2 (Fundamentals of Generative AI, hallucination), 5 (Governance)
+
+## Structured output + single source of truth + lineage (Step 1.2)
+1. What it is: data in a fixed shape (YAML header, CSV, JSON) so code can read it. A single source of truth means one place owns a fact and everything else reads from it.
+2. Example from P1: version: "1.4" is quoted so YAML keeps it as text (1.10 would become 1.1 as a number). The POL-04 PDF reads owner and status from the manifest, so they cannot disagree. The checker also verifies KPI to dashboard links in both directions, a small lineage graph.
+3. Why it matters: metadata is used later for filters (domain, certification) and for citations, so it must be exact.
+4. Industry name: schema, metadata filtering, data contract, data lineage.
+5. Interview line: "I kept metadata in one manifest, generated dependent documents from it, and checked KPI to dashboard lineage both ways, so filters and citations are reliable."
+AWS AIF-C01 domain: 2 (Fundamentals of Generative AI), 5 (Governance)
+
 ## Secrets and Git (Day 0)
 1. What it is: commit = local snapshot with a message; push = upload commits to GitHub. .gitignore stops git from tracking .env.
 2. Example from P1: git ls-files shows only .env.example, never .env.

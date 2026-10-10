@@ -51,6 +51,7 @@ Pace by focus. Go **deep** on Very High / High areas and keep Low areas quick:
 2. For every file you write, give a block-by-block walkthrough, then ask me 1 question about it.
 3. For the corpus (Step 1.2), show me the generator script and one full KPI file, and explain how the others were made.
 4. Never run a big hidden script that writes many files without showing me the script first.
+5. Before asking explain-it-back questions, give a "what we built" recap in very simple words (what it is, why, how it connects to the next piece) and add it to `docs/BUILD_SO_FAR.md`. Never ask about something I have not seen explained. Define every ID or name (like POL-04) the first time.
 
 ## 3a. Who writes what
 
