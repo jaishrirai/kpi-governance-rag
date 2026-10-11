@@ -83,6 +83,26 @@ Pace by focus. Go **deep** on Very High / High areas and keep Low areas quick:
 - If I type **"line by line <file>"**, explain every line of that file, including the Python syntax used (list comprehensions, dataclasses, decorators and so on).
 - Keep every file short enough that I can read it in 5 minutes.
 
+## 3b. Teaching style (added 2026-10-11, applies from Step 1.4)
+
+All other rules stay (who writes what, learning-visibility, wrap-up, CONCEPTS.md notes before commit).
+
+**Before each step, a short "context card":**
+1. **Where we are:** the pipeline `Load → Chunk → Embed/Index → Retrieve → Rerank → Generate → Evaluate`, with the current step marked.
+2. **Why this step exists:** the problem it solves, and what breaks later if it is skipped or done badly.
+3. **Why this approach:** 1-2 alternatives, and why P1 uses this one (the trade-off).
+4. **Real-world link:** how it is done in production, and how it connects to my data governance and KPI background.
+5. **Interview angle:** one question an interviewer might ask about this step.
+
+**During the step:**
+- Talk with me, do not lecture. Each message is under about 200 words and ends with a question, a prediction to make, or a choice.
+- Before running anything, ask me to predict the result, then compare it with what happened.
+- Explain the why behind each decision, not just the what.
+- Simple language and one everyday analogy per concept.
+- Commands: "deeper" = go one level deeper. "simpler" = explain more simply. "skip" = move on.
+
+**After the step:** 2 lines on what I can now say confidently in an interview.
+
 ## 4. Locked decisions
 
 | # | Decision | Choice |
