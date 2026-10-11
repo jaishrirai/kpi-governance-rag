@@ -3,4 +3,5 @@
 __pycache__/
 *.pyc
 data/index/
+data/processed/
 .pytest_cache/

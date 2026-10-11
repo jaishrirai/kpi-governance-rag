@@ -39,5 +39,8 @@
 - Wrote 11 golden questions (G-001 to G-011) before any search was run. Expected doc ids were drafted by Claude and reviewed by me; G-005 key is POL-04 only.
 - Step 1.2 wrap-up: CONCEPTS.md notes added, issue #3 closed by the commit.
 
+- Step 1.3: wrote `src/rag/ingest.py` and ran it: 50 documents (21 kpi, 15 catalog, 8 sop, 5 policy, 1 faq), no empty texts.
+- PDF quality note: pypdf puts each table cell on its own line, so table rows lose their structure and wrapped cells split mid-sentence. Words are intact (keyword search is fine), but column meaning is guessed. PDF headings have no markdown marker, which matters for the V2 chunker.
+
 **Where we stopped**
-- Step 1.2 is finished. Next is Step 1.3 (loaders).
+- Step 1.3 code is written and run. Waiting on my answer to the 1 question, then the day-end wrap-up (CONCEPTS.md notes, commit). Next is Step 1.4 (chunking).

@@ -103,6 +103,12 @@ All other rules stay (who writes what, learning-visibility, wrap-up, CONCEPTS.md
 
 **After the step:** 2 lines on what I can now say confidently in an interview.
 
+**File map and commits (added 2026-10-11):**
+- Every step starts with a "File map" table: file name, full folder path, new or changed, one sentence on what it does.
+- After each file, say which VS Code panel to open to see it (Explorer, Source Control, Terminal, Problems...).
+- Before any commit, show `git status` and explain each change in one line.
+- Generated data (`data/index/`, `data/processed/`) is never committed. Commit the code that makes it.
+
 ## 4. Locked decisions
 
 | # | Decision | Choice |

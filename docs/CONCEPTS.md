@@ -50,6 +50,14 @@ AWS AIF-C01 domain: 2 (Fundamentals of Generative AI, hallucination), 5 (Governa
 5. Interview line: "I kept metadata in one manifest, generated dependent documents from it, and checked KPI to dashboard lineage both ways, so filters and citations are reliable."
 AWS AIF-C01 domain: 2 (Fundamentals of Generative AI), 5 (Governance)
 
+## Document loaders + PDF extraction (Step 1.3)
+1. What it is: code that reads each file format and turns it into one common shape (metadata + text), so later steps handle one format.
+2. Example from P1: ingest.py loads markdown, CSV rows and PDFs into documents.jsonl. In POL-03, pypdf puts each table cell on its own line, so a value can sit next to the wrong label.
+3. Why it matters: parsing errors are silent. The answer looks cited but maps the wrong cell, and retrieval metrics will not show it.
+4. Industry name: document loaders, parsing/ingestion (Textract or Bedrock Knowledge Bases parsing on AWS).
+5. Interview line: "I checked PDF table extraction first, because flattened tables break answers without any error."
+AWS AIF-C01 domain: 3 (Applications of Foundation Models, RAG data preparation)
+
 ## Secrets and Git (Day 0)
 1. What it is: commit = local snapshot with a message; push = upload commits to GitHub. .gitignore stops git from tracking .env.
 2. Example from P1: git ls-files shows only .env.example, never .env.

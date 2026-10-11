@@ -2,6 +2,16 @@
 
 Claude adds a short entry here at the end of every step. Each entry answers: what did we make, why, and how does it connect to the next piece.
 
+## Journey at a glance
+
+| Step | What we did | Key result | Decision or mistake worth remembering |
+|---|---|---|---|
+| 0.1 GitHub setup | Private repo, labels, 18 issues, project board | Issue board ready | Made the board twice by mistake; deleted the duplicate |
+| 1.1 Environment | Python 3.11 venv, torch CPU, embedding smoke test | 384 dims; churn vs attrition 0.777, vs inventory 0.664 | Scores sit in a narrow band, so rank, do not use a cutoff |
+| 1.2 Corpus | 50 invented docs, manifest, `check_corpus.py`, 11 golden questions | All checks pass; checker catches planted errors | Manifest is the single source of truth. Ran `make_pdfs.py` before showing it, which led to rule 4. Skipped the glossary definition check on purpose |
+| 1.3 Loaders | `ingest.py` writes `documents.jsonl` (50 docs) | PDF tables come out one cell per line, row structure lost | Metadata from the manifest, not the files. Page numbers not kept |
+| 2-day replan | Plan cut from 3 days to 2 | FastAPI and architecture doc moved out | You asked for the skim before the golden questions, and for batched CONCEPTS notes |
+
 ## The big picture
 We are building a question-answering assistant for a fictional company, Kestrel Retail Group. You ask "How is churn defined? Who owns it? Is it certified?" and it answers from company documents, shows which document it used, and says "I don't know" if the answer is not there.
 
@@ -62,4 +72,17 @@ POL-04 (the question you asked):
 - Result: 50 documents, 15 catalog assets, all checks pass. The first run showed 5 false alarms from empty placeholder files (`.gitkeep`). That was a bug in the checker, not the corpus. I also broke a copy on purpose (changed an owner, renamed a dashboard) and the checker caught both, so a passing run means something.
 - Not checked: the hand-typed one-line definitions in the glossary PDF (POL-04). You decided that is fine for now.
 
-Still to do in 1.2: you skim 5 files, then the wrap-up (CONCEPTS.md note, commit, close #3).
+Step 1.2 is finished and committed (issue #3 closed). Your 11 golden questions (`golden/golden_set.jsonl`) were written before any search ran.
+
+## Step 1.3: Loaders (done, not committed yet)
+- Made: `src/rag/ingest.py`, which writes `data/processed/documents.jsonl`: 50 lines, one per document.
+- Why: the files are in 3 formats (markdown, CSV, PDF). Everything after this step (chunking, search, citations) should only deal with one shape: the manifest metadata plus a `text` field.
+- How it works:
+  - Metadata (owner, status, version...) is copied from the manifest, not from the files. This keeps the single source of truth from step 1.2.
+  - Markdown: the YAML header is dropped, the body is the text.
+  - Catalog: each of the 15 rows becomes its own document (CAT-01 to CAT-15), written as "Description: ... Refresh: ... Linked KPIs: ...".
+  - PDF: pypdf extracts the text of every page.
+- Counts: 21 KPI, 15 catalog, 8 SOP, 5 policy, 1 FAQ = 50. No empty texts.
+- Finding to remember (PDF quality): table cells come out one per line, and row boundaries are lost. In POL-03 the row "Public / Approved for release outside Kestrel / ..." becomes a stack of short lines. Cells that wrap onto two lines are split mid-sentence. The words are intact, so keyword search still works, but a question like "what is the handling rule for Confidential data?" depends on the model guessing which line belongs to which column. This is why we later check how PDFs perform separately in the error analysis.
+- Second finding: PDF headings (like "1. Purpose") are plain lines with no `##` marker. The V2 by-heading chunker (which you write in 1.4) must handle markdown headings and numbered PDF headings.
+- Limit: page numbers are not stored, so a PDF citation names the document, not the page.
