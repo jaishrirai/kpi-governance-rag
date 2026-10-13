@@ -192,3 +192,348 @@ Status: the three variants are written and tested (18 checks pass with the loade
 - Table rows are kept whole: the chunker cuts at line breaks first, so one labelled row is never cut in half.
 
 Predictions and results are recorded in the milestone walkthrough, not here.
+
+---
+
+## Section 4: Chunking recap, embeddings and Chroma (Steps 1.4 and 1.5)
+
+# RAG Learning Notes: Chunking, Embeddings and Vector Search
+
+These notes cover Step 1.4 and prepare you for Step 1.5. The goal is to understand the concepts well enough to explain the design choices in an interview, not just memorize definitions.
+
+## Part 1 — Chunking
+
+### 1. What is chunking?
+
+Chunking is the process of dividing a document into smaller pieces of text called chunks so that a RAG system can retrieve relevant information without always needing the entire document.
+
+For example, a KPI document may contain its definition, formula, source tables, caveats and change history. If a user asks only for the formula, retrieving the Formula section may be sufficient.
+
+Chunking comes after ingestion:
+
+`Raw files → Ingestion → Normalized documents → Chunking → Embeddings → Retrieval`
+
+- Ingestion: extracts content and metadata from Markdown, CSV and PDF files into a common document format.
+- Chunking: divides that content into searchable units.
+- Embeddings: represent each chunk numerically so that semantic similarity can be calculated.
+- Retrieval: selects chunks relevant to the user's question.
+
+### 2. Why is chunking necessary?
+
+Without appropriate chunking, two problems can occur:
+
+- Chunks that are too large: contain unnecessary information, making the relevant passage harder to isolate and potentially exceeding model input limits.
+- Chunks that are too small: may lose context needed to interpret a definition, formula or business rule.
+
+The objective is to balance focused retrieval with sufficient context.
+
+### 3. Three chunking strategies in this project
+
+Your `src/rag/chunking.py` implements three variants. The reported figures below are from the run results you shared.
+
+| Feature                  | V1: Fixed-size                 | V2: Heading-based                       | V3: Document-based                                 |
+| ------------------------ | ------------------------------ | --------------------------------------- | -------------------------------------------------- |
+| Approach                 | Fixed text windows             | Split at `##` headings                  | Keep the document together when possible           |
+| Target size              | About 400 tokens               | One chunk per section                   | One chunk per document                             |
+| Overlap                  | About 60 tokens when splitting | Used if a section must be split         | Used if a document must be split                   |
+| Chunks produced          | 52                             | 230                                     | 52                                                 |
+| Average estimated tokens | 238                            | 55                                      | 240                                                |
+| Main advantage           | Simple, consistent windows     | Preserves section meaning               | Keeps broader context together                     |
+| Main risk                | Can split related content      | Related sections become separate chunks | May include irrelevant content from other sections |
+
+The approximate token count uses `len(text) // 4`, rather than a model-specific tokenizer. The header is included in the chunk text.
+
+Why are the averages different?
+
+V2 creates separate chunks for individual sections, so it produces many more small chunks. V3 keeps whole documents together when they fit, so its chunks are generally larger.
+
+V3 produces 52 chunks rather than 50 because the POL-04 glossary needs two chunks to stay within the cap.
+
+### 4. What is overlap?
+
+Overlap is the portion of text repeated between consecutive chunks.
+
+Suppose the text is split into:
+
+- Chunk 1: A, B, C, D, E
+- Chunk 2: D, E, F, G, H
+
+D and E are repeated. That repetition is overlap.
+
+Why use it? A relevant explanation might cross a chunk boundary. Overlap gives the next chunk some of the preceding context, reducing the chance that the information becomes difficult to interpret.
+
+In this project, V1 targets approximately 60 tokens of overlap. The implementation uses character-based splitting, so the actual overlap can vary.
+
+Trade-off:
+
+- More overlap means more repeated text and potentially more chunks or stored content.
+- Less overlap reduces duplication but may make cross-boundary context harder to retrieve.
+
+Reducing overlap does not necessarily reduce the chunk count. It depends on the text lengths and where the splitting function places boundaries.
+
+### 5. How does the code preserve context?
+
+The chunker uses several mechanisms:
+
+- Headings: V2 identifies Markdown `##` sections such as Formula and Caveats.
+- Headers: each chunk begins with the document title and section, for example `Net Revenue Retention | Formula`.
+- Metadata: chunks retain fields such as `doc_id`, title, domain, owner, certification, version and effective date.
+- Overlap: long text split into multiple pieces can repeat some preceding content.
+- Cut boundaries: the code tries to cut at line breaks first and spaces second, which can help preserve table rows.
+
+These techniques help retain context and traceability. They do not guarantee that every chunk will be self-contained or that retrieval will always find the correct evidence.
+
+## Part 2 — Chunking failure vs retrieval failure
+
+This distinction is important for debugging a RAG system.
+
+Imagine the correct answer exists in the original corpus, but the system returns three irrelevant chunks.
+
+That does not automatically mean chunking was wrong. The failure could be in retrieval.
+
+| What happened                                                                       | Likely problem                                                   |
+| ----------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| The chunker accidentally omitted the relevant text                                  | Ingestion or chunking                                            |
+| The relevant text exists in a clear, useful chunk, but retrieval does not select it | Retrieval, embedding quality, ranking or retrieval configuration |
+| The text was split so that its meaning depends on missing context                   | Chunking quality, though retrieval can contribute                |
+| The correct evidence was retrieved, but the LLM gave the wrong answer               | Answer generation or evidence interpretation                     |
+
+These are diagnostic clues, not absolute rules. More than one stage can contribute to a failure.
+
+### A practical example
+
+Question: "What is the NRR formula, and what does it exclude?"
+
+1. Chunking problem: the relevant formula or exclusion text was lost or separated from the context needed to interpret it.
+2. Retrieval problem: the Formula and Caveats chunks exist and contain the answer, but the search returns unrelated chunks instead.
+3. Generation problem: both correct chunks are retrieved, but the LLM misinterprets them.
+
+How to answer this in an interview:
+
+> I would trace the failure through the pipeline. First, I would verify that ingestion and chunking preserved the required evidence. Then I would check whether retrieval selected the relevant chunks. If the correct evidence was retrieved but the answer was still wrong, I would investigate the generation stage.
+
+This is a useful debugging principle: check where the evidence was lost before changing the architecture.
+
+## Part 3 — Step 1.5: Embeddings
+
+### 1. What is an embedding?
+
+An embedding is a numerical representation of text that captures aspects of its meaning.
+
+A computer can store and compare text directly, but ordinary text comparison does not naturally recognize that different words can express similar ideas.
+
+For example:
+
+- "Customer churn increased."
+- "Customer attrition went up."
+
+These sentences use different words but express similar ideas. An embedding model can map them to vectors that are relatively close in the embedding space.
+
+An embedding is not a summary, a database row, or an answer. It is a numerical representation used to compare text.
+
+### 2. What does a vector look like?
+
+Conceptually, a vector is a list of numbers:
+
+```
+[0.12, -0.08, 0.41, 0.03, ...]
+```
+
+The real vector from your project's model contains 384 numbers. This was established in your Step 1.1 smoke test using `BAAI/bge-small-en-v1.5` through Sentence Transformers.
+
+You do not need to interpret each number individually. The important point is that the vector lets the system compare the representation of a question with representations of stored chunks.
+
+### 3. How does embedding-based search work?
+
+Consider two chunks:
+
+- Chunk A: "Customer churn measures customers lost over a defined period."
+- Chunk B: "Inventory turnover measures how frequently inventory is sold and replaced."
+
+A user asks: "How do we measure customer attrition?"
+
+The system embeds the question and compares it with the stored chunk vectors. Chunk A may be ranked higher because its meaning is more relevant to the question.
+
+User question
+
+"How do we measure customer attrition?"
+
+Embedding model
+
+Converts the question into a 384-dimensional vector
+
+Similarity search
+
+Compare the question vector with stored chunk vectors
+
+Retrieved chunks
+
+Return the highest-ranked relevant candidates
+
+This is called semantic search because it searches by similarity of meaning, rather than relying only on exact word matches.
+
+However, embeddings do not guarantee that synonyms or related concepts will always match correctly. The model can still rank an irrelevant chunk too highly or miss the best chunk.
+
+### 4. What determines the vector's length?
+
+This is one of Claude's prediction questions.
+
+The embedding model determines the vector dimension.
+
+Your configured model, `BAAI/bge-small-en-v1.5`, produces a vector with 384 dimensions. The length is not determined by the number of source documents, the number of chunks, or the number of words in a chunk.
+
+For example:
+
+| Input text                   | Output vector length |
+| ---------------------------- | -------------------- |
+| A short sentence             | 384 numbers          |
+| A long KPI section           | 384 numbers          |
+| A chunk containing a formula | 384 numbers          |
+
+The numerical values change with the input text, but the output dimension remains 384 for this model.
+
+The distinction to remember:
+
+- Chunk size: how much text is in a chunk.
+- Vector dimension: how many numbers represent that chunk.
+- Number of vectors: how many chunks have been embedded.
+
+These are three different things.
+
+## Part 4 — What is Chroma?
+
+### 1. The problem Chroma solves
+
+After chunking, your project has three alternative sets of chunks:
+
+- V1: 52 chunks
+- V2: 230 chunks
+- V3: 52 chunks
+
+The chunks contain text and metadata, but they still need vector representations for semantic search.
+
+Chroma is a vector database. In this project, it will store the chunk embeddings alongside the text, IDs and metadata so the system can search and retrieve relevant chunks.
+
+Think of it as a searchable store for the numerical representations of your chunks, with the original evidence and its identifying information kept alongside them.
+
+### 2. How many vectors will be stored?
+
+Let's answer Claude's question.
+
+52 + 230 + 52 = **334**
+
+If you embed every chunk from all three variants, you will create 334 vector records in total, assuming each chunk is embedded once.
+
+The important qualification is that V1, V2 and V3 are alternative experiments, not 334 unique pieces of source information. Some content will overlap across variants.
+
+For a fair comparison, it makes sense to keep each variant in a separate Chroma collection, or reliably filter by the variant metadata. Otherwise, a search might mix chunks from multiple strategies and make the comparison difficult to interpret.
+
+If all 334 records use the same 384-dimensional embedding model, each vector contains 384 numbers.
+
+### 3. What does Chroma store?
+
+Conceptually, each record contains four things:
+
+| Field         | Purpose                                     | Example                                |
+| ------------- | ------------------------------------------- | -------------------------------------- |
+| ID            | Identifies the chunk                        | `KPI-010::v2::3`                       |
+| Text/document | Holds the evidence                          | NRR Formula section                    |
+| Embedding     | Supports semantic similarity search         | A vector of 384 numbers                |
+| Metadata      | Describes the source and supports filtering | Certification, owner, version, section |
+
+Your `chunking.py` already creates the IDs, text and metadata. Step 1.5 adds the embedding and stores these records in Chroma.
+
+### 4. Why store metadata with vectors?
+
+Consider two documents that mention customer churn:
+
+- A certified, current KPI definition.
+- A deprecated KPI definition.
+
+A similarity search may consider both relevant because they discuss the same topic. Semantic similarity alone does not establish which definition is authoritative.
+
+Metadata can help resolve this.
+
+For example, the application can filter for certified records before or during retrieval, depending on how the retrieval pipeline is implemented.
+
+Claude's interview line is directionally correct:
+
+> "I store each vector with its metadata, so I can filter by certification before ranking."
+
+A more precise version for your project would be:
+
+> "I store chunk embeddings alongside their source metadata, allowing retrieval to apply filters such as certification and version so that semantically relevant but deprecated content can be excluded."
+
+One caveat: storing metadata does not automatically enforce governance. The retrieval code must actually apply the filters, and the metadata must be trustworthy.
+
+### 5. What are the alternatives to Chroma?
+
+Claude listed three alternatives. You only need to understand the broad differences for now.
+
+| Technology | What it is                  | Why it might be used                                                                     |
+| ---------- | --------------------------- | ---------------------------------------------------------------------------------------- |
+| Chroma     | Vector database             | Convenient for a local RAG prototype; stores vectors, documents and metadata             |
+| FAISS      | Similarity-search library   | Efficient vector search; metadata and document management need additional implementation |
+| pgvector   | PostgreSQL extension        | Supports vector search alongside relational data                                         |
+| OpenSearch | Search and analytics engine | Supports keyword and vector search in a broader search platform                          |
+
+The project uses Chroma to keep the local prototype manageable. The underlying ideas (embedding, indexing, similarity search and metadata filtering) transfer to other platforms.
+
+Amazon Bedrock Knowledge Bases can use supported vector stores, including OpenSearch. The specific choice depends on the service configuration and architecture.
+
+## Part 5 — How the pieces fit together
+
+1. Source documents: Markdown, CSV, PDF
+2. Ingestion: extract content and attach metadata
+3. Chunking: create searchable units using V1, V2 or V3
+4. Embedding model: convert each chunk into a 384-dimensional vector
+5. Chroma: store and search the vectors, text and metadata
+6. Retrieval: find and rank candidate chunks for a question
+
+This is the core pipeline. Later steps will add keyword retrieval, hybrid ranking, reranking and grounded answer generation.
+
+## Part 6 — Interview questions to prepare
+
+1. What is chunking, and why is it required in RAG?
+
+Chunking divides source documents into smaller searchable units. It balances focused retrieval against preserving enough context to answer questions accurately.
+
+2. What is the difference between fixed-size and heading-based chunking?
+
+Fixed-size chunking divides text into approximate windows regardless of document structure. Heading-based chunking uses section boundaries, preserving semantic organization but producing variable-sized chunks.
+
+3. What is overlap, and why do we use it?
+
+Overlap repeats a portion of text between consecutive chunks to reduce the loss of context at split boundaries. It increases duplication and does not guarantee retrieval success.
+
+4. What is an embedding?
+
+An embedding is a numerical vector representing text. The system compares the vector for a query with stored chunk vectors to identify semantically relevant candidates.
+
+5. What determines the dimension of an embedding?
+
+The embedding model's output architecture determines the vector dimension. In this project, BAAI/bge-small-en-v1.5 produces 384-dimensional vectors.
+
+6. How many vectors are created if all three chunking variants are embedded?
+
+334 in total: 52 + 230 + 52, assuming one vector per chunk and no additional records. The variants should be kept distinct when comparing retrieval performance.
+
+7. What is Chroma's role?
+
+Chroma stores chunk embeddings with associated text, IDs and metadata, and supports vector similarity search and metadata filtering.
+
+8. How would you investigate a RAG system returning irrelevant chunks?
+
+Check that ingestion and chunking preserved the evidence, then inspect retrieval candidates, similarity scores, filters and top-k settings. If correct evidence reaches generation but the answer is wrong, investigate the generation stage.
+
+## What you should understand before coding Step 1.5
+
+You do not need to understand vector mathematics deeply yet. You should be able to explain these five points:
+
+1. Chunking decides what text is grouped together.
+2. The embedding model converts each chunk into a vector; your current model produces 384 numbers per chunk.
+3. Chroma stores the vector together with the source text and metadata.
+4. Retrieval compares the question vector with stored vectors and selects candidate chunks.
+5. Retrieval quality depends on more than chunking: the embedding model, search configuration, ranking, filters and quality of the source content also matter.
+
+Open question for you: If you embed all 334 chunks using the same model, will the vectors all have the same length? And will they all contain the same numbers? Explain why or why not.
