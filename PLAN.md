@@ -46,12 +46,12 @@ Already done before Claude Code: repo skeleton, `requirements.txt`, `.gitignore`
 - [x] After the skim and BEFORE any search or retrieval run, I write 10 questions in `golden/golden_set.jsonl` (done: 11 written, G-001 to G-011; Claude drafts 29 more in Step 2.1)
 
 ### 1.3 Loaders (0:35)
-- [ ] `src/rag/ingest.py`: markdown + YAML, CSV rows, PDF pages, written to `data/processed/documents.jsonl`
-- [ ] Print counts by doc_type; inspect the PDF table text and note its quality in the log
+- [x] `src/rag/ingest.py`: markdown + YAML, CSV rows, PDF pages, written to `data/processed/documents.jsonl`
+- [x] Print counts by doc_type; inspect the PDF table text and note its quality in the log
 
 ### 1.4 Chunking V1 / V2 / V3 (High) [YOU BUILD: V2] (1:30)
-- [ ] `src/rag/chunking.py` + `tests/test_chunking.py` (caps, unique ids, overlap, V3 = 1 chunk per KPI)
-- [ ] Stats table per variant: count, average tokens, max tokens
+- [x] `src/rag/chunking.py` + `tests/test_chunking.py` (caps, unique ids, overlap, V3 = 1 chunk per KPI)
+- [x] Stats table per variant: count, average tokens, max tokens
 - Concepts: Chunking, Overlap, Parent-child retrieval (say "I would")
 
 ### 1.5 Embeddings + Chroma (High / Medium) (0:45)
