@@ -9,8 +9,8 @@
 
 ## Next steps
 
-1. Commit and push 1.3 and 1.4 (done locally, push pending). Close issues for 1.3 and 1.4 on GitHub.
-2. Decide the V2 "YOU BUILD" label (see `docs/walkthroughs/M1.md`).
+1. Push 1.3 and 1.4 (committed locally as 66ff746; push pending). Close issues for 1.3 and 1.4 on GitHub.
+2. V2 and BM25 labels changed to "Claude builds, you review and predict" (decided).
 3. Step 1.5: predict the sanity-query results, then build `src/rag/index.py`.
 4. Step 1.6: BM25, compare with vector on "KPI-014".
 5. Step 1.7: write about 4 more golden questions to reach 15.
