@@ -79,13 +79,13 @@ Already done before Claude Code: repo skeleton, `requirements.txt`, `.gitignore`
 - [ ] Work out MRR by hand for ranks 1, 3, missing, 2 before coding
 - [ ] Baseline: V1 + vector
 
-### 2.3 Hybrid RRF (Very High) [Claude builds, you review and predict] (1:20)
+### 2.3 Hybrid RRF (Very High) [YOU BUILD] (1:20)
 - [ ] Work one RRF example by hand (rank 1 vector + rank 4 BM25 = 1/61 + 1/64)
 - [ ] `rrf()` + `hybrid_search()` + filter tests
 - [ ] Grid: 3 variants x {vector, BM25, hybrid}, runs 1-9
 - [ ] Error analysis of the 3 worst misses in `results/experiments.md`
 
-### 2.4 Reranker (Very High) [Claude builds, you review and predict] (0:40)
+### 2.4 Reranker (Very High) [YOU BUILD] (0:40)
 - [ ] `rerank()` with the cross-encoder; runs 10-11 on the best 2 configs; log the added latency
 - Concepts: Bi-encoder vs cross-encoder, "retrieve wide, rerank narrow"
 
