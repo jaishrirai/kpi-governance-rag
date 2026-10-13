@@ -55,8 +55,8 @@ Already done before Claude Code: repo skeleton, `requirements.txt`, `.gitignore`
 - Concepts: Chunking, Overlap, Parent-child retrieval (say "I would")
 
 ### 1.5 Embeddings + Chroma (High / Medium) (0:45)
-- [ ] `src/rag/index.py`: 3 collections, `python -m rag.index --variant all`
-- [ ] Sanity queries: "how is churn calculated", "KPI-014", "who owns the customer 360 dashboard"
+- [x] `src/rag/index.py`: 3 collections, `python -m rag.index --variant all`
+- [x] Sanity queries: "how is churn calculated", "KPI-014", "who owns the customer 360 dashboard"
 - Concepts: Vector store, HNSW, distance vs similarity
 
 ### 1.6 BM25 (High) [Claude builds, you review and predict] (1:15)
