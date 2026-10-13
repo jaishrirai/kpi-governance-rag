@@ -49,7 +49,7 @@ Already done before Claude Code: repo skeleton, `requirements.txt`, `.gitignore`
 - [x] `src/rag/ingest.py`: markdown + YAML, CSV rows, PDF pages, written to `data/processed/documents.jsonl`
 - [x] Print counts by doc_type; inspect the PDF table text and note its quality in the log
 
-### 1.4 Chunking V1 / V2 / V3 (High) [YOU BUILD: V2] (1:30)
+### 1.4 Chunking V1 / V2 / V3 (High) [Claude builds, you review and predict] (1:30)
 - [x] `src/rag/chunking.py` + `tests/test_chunking.py` (caps, unique ids, overlap, V3 = 1 chunk per KPI)
 - [x] Stats table per variant: count, average tokens, max tokens
 - Concepts: Chunking, Overlap, Parent-child retrieval (say "I would")
@@ -59,7 +59,7 @@ Already done before Claude Code: repo skeleton, `requirements.txt`, `.gitignore`
 - [ ] Sanity queries: "how is churn calculated", "KPI-014", "who owns the customer 360 dashboard"
 - Concepts: Vector store, HNSW, distance vs similarity
 
-### 1.6 BM25 (High) [YOU BUILD] (1:15)
+### 1.6 BM25 (High) [Claude builds, you review and predict] (1:15)
 - [ ] `bm25_search()` with the code-preserving tokenizer and filters
 - [ ] Compare against vector search on "KPI-014": which wins and why?
 - Concepts: Keyword search, BM25, TF-IDF intuition
@@ -79,13 +79,13 @@ Already done before Claude Code: repo skeleton, `requirements.txt`, `.gitignore`
 - [ ] Work out MRR by hand for ranks 1, 3, missing, 2 before coding
 - [ ] Baseline: V1 + vector
 
-### 2.3 Hybrid RRF (Very High) [YOU BUILD] (1:20)
+### 2.3 Hybrid RRF (Very High) [Claude builds, you review and predict] (1:20)
 - [ ] Work one RRF example by hand (rank 1 vector + rank 4 BM25 = 1/61 + 1/64)
 - [ ] `rrf()` + `hybrid_search()` + filter tests
 - [ ] Grid: 3 variants x {vector, BM25, hybrid}, runs 1-9
 - [ ] Error analysis of the 3 worst misses in `results/experiments.md`
 
-### 2.4 Reranker (Very High) [YOU BUILD] (0:40)
+### 2.4 Reranker (Very High) [Claude builds, you review and predict] (0:40)
 - [ ] `rerank()` with the cross-encoder; runs 10-11 on the best 2 configs; log the added latency
 - Concepts: Bi-encoder vs cross-encoder, "retrieve wide, rerank narrow"
 
