@@ -391,7 +391,8 @@ Also include these traps:
 
 **Retrieval metrics (no LLM needed, cheap to run):**
 
-- **recall@5:** the share of answerable questions where an expected `doc_id` appears in the top 5. Match on the document, not the chunk, so the 3 chunking variants are compared fairly.
+- **recall@5 (headline):** for each answerable question, the share of its expected `doc_ids` that appear in the top 5 documents, averaged over questions. Match on the document, not the chunk, so the 3 chunking variants are compared fairly.
+- **hit@5:** 1 if any expected `doc_id` appears in the top 5 documents, else 0, averaged over questions. Reported next to recall@5. (Earlier versions of this brief called this metric "recall@5"; the conventional name for the binary metric is hit rate.)
 - **MRR@10:** the average of 1 / (rank of the first correct document).
 
 **Generation metrics (they cost tokens, so run them on the best configuration and one baseline only):**
@@ -407,8 +408,8 @@ Also include these traps:
 
 **The experiment grid (Day 5 and Day 7):**
 
-| Run | Chunking | Retrieval | recall@5 | MRR | Notes |
-| --- | --- | --- | --- | --- | --- |
+| Run | Chunking | Retrieval | recall@5 | hit@5 | MRR | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
 | 1 to 3 | V1, V2, V3 | Vector |  |  |  |
 | 4 to 6 | V1, V2, V3 | BM25 |  |  |  |
 | 7 to 9 | V1, V2, V3 | Hybrid (RRF) |  |  |  |
@@ -766,14 +767,15 @@ def vector_search(question, variant, k=20, filters=None) -> list[Hit]
 **3. Retrieval metrics at document level:**
 
 - Turn the ranked chunk list into a ranked list of unique document IDs, keeping the first appearance of each.
-- recall@5 = 1 if any expected `doc_id` is in the top 5 documents, averaged over answerable questions.
+- recall@5 = expected `doc_ids` found in the top 5 documents / number of expected `doc_ids`, averaged over answerable questions (headline).
+- hit@5 = 1 if any expected `doc_id` is in the top 5 documents, else 0, averaged over answerable questions.
 - MRR@10 = 1 / rank of the first expected document in the top 10, or 0 if it isn't there, averaged.
 - Report the dev set (30) and the holdout set (10) separately, and skip unanswerable questions for these 2 metrics.
 
 **4. `results/runs.csv` columns:**
 
 ```text
-run_id,date,git_sha,variant,retriever,rerank,k,split,n,recall_at_5,mrr_at_10,avg_latency_ms,notes
+run_id,date,git_sha,variant,retriever,rerank,fetch_depth,split,n,recall_at_5,hit_at_5,mrr_at_10,avg_latency_ms,notes
 ```
 
 ### Common mistakes

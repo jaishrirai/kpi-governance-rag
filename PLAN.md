@@ -75,7 +75,7 @@ Already done before Claude Code: repo skeleton, `requirements.txt`, `.gitignore`
 ## Day 2: Retrieval grid, grounded answers, eval, demo, ship (about 6h20)
 
 ### 2.2 Retrieval eval (Very High) [YOU BUILD: metrics] (0:50)
-- [ ] `eval/retrieval_eval.py`: recall@5, MRR@10 at document level, dev vs holdout, appended to `results/runs.csv`
+- [ ] `eval/retrieval_eval.py`: recall@5 (fractional, headline), hit@5 (binary), MRR@10 at document level, dev vs holdout, appended to `results/runs.csv`
 - [ ] Work out MRR by hand for ranks 1, 3, missing, 2 before coding
 - [ ] Baseline: V1 + vector
 

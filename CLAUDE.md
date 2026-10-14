@@ -61,7 +61,7 @@ Pace by focus. Go **deep** on Very High / High areas and keep Low areas quick:
 |---|---|
 | 1.4 | `chunk_by_heading()` (V2). You write V1 and V3 |
 | 1.6 | `tokenize()` and `bm25_search()` |
-| 2.2 | `recall_at_k()` and `mrr_at_k()` at document level |
+| 2.2 | `recall_at_k()` (fractional, headline), `hit_at_k()` (binary) and `reciprocal_rank()` at document level; MRR@10 is the mean of `reciprocal_rank` |
 | 2.3 | `rrf()` and `hybrid_search()` |
 | 2.4 | `rerank()` |
 | 2.5 | `validate_citations()` (the citation check plus the retry and refusal logic) |
@@ -128,7 +128,7 @@ All other rules stay (who writes what, learning-visibility, wrap-up, CONCEPTS.md
 - **Retrieval:** vector top 20, BM25 top 20 (regex `[a-z0-9]+(?:-[a-z0-9]+)*` keeps `kpi-014` whole), RRF k=60, cross-encoder `cross-encoder/ms-marco-MiniLM-L-6-v2` keeps top 5, and optional filters on domain and certification.
 - **Generation:** prompt in `prompts/answer_v1.txt` (never edit a version already run; make v2 instead). Temperature 0, max 400 tokens. JSON `{answer, citations, refused}` validated with Pydantic. Citations must be retrieved chunk ids, checked in code, with one retry, then refuse. Log every call to `results/traces.jsonl`.
 - **Golden set:** 40 questions (12 definition, 8 ownership, 6 catalog, 6 process, 8 unanswerable), traps included, 10 holdout (every 4th). I write ~15 myself before seeing any retrieval results.
-- **Eval:** retrieval recall@5 and MRR@10 at **document** level, dev vs holdout. Generation: judge correctness + faithfulness, citation validity, refusal accuracy, 10 hand grades for judge agreement, cost per query, p50 / p95 latency. Log every run in `results/runs.csv`.
+- **Eval:** retrieval recall@5 (fractional: expected docs found / expected docs; headline), hit@5 (binary: any expected doc in top 5) and MRR@10 at **document** level, dev vs holdout, answerable questions only. Generation: judge correctness + faithfulness, citation validity, refusal accuracy, 10 hand grades for judge agreement, cost per query, p50 / p95 latency. Log every run in `results/runs.csv`.
 - **API:** FastAPI `POST /ask`, `GET /health` (contract in brief section 6.6).
 
 ## 6. GitHub beginner mode
