@@ -60,8 +60,8 @@ Already done before Claude Code: repo skeleton, `requirements.txt`, `.gitignore`
 - Concepts: Vector store, HNSW, distance vs similarity
 
 ### 1.6 BM25 (High) [Claude builds, you review and predict] (1:15)
-- [ ] `bm25_search()` with the code-preserving tokenizer and filters
-- [ ] Compare against vector search on "KPI-014": which wins and why?
+- [x] `bm25_search()` with the code-preserving tokenizer and filters
+- [x] Compare against vector search on "KPI-014": which wins and why?
 - Concepts: Keyword search, BM25, TF-IDF intuition
 
 ### 2.1 Golden set, part 2 (0:30, runs at the end of Day 1)
