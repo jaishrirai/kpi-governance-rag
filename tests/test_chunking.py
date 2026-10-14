@@ -89,12 +89,12 @@ def test_metadata_is_copied_onto_every_chunk():
 
 
 @pytest.mark.skipif(not Path(DOCS_PATH).exists(), reason="run the loader first (python -m rag.ingest)")
-def test_real_corpus_v2_gives_7_sections_per_kpi_file():
+def test_real_corpus_v2_gives_8_sections_per_kpi_file():
     docs = [json.loads(l) for l in open(DOCS_PATH, encoding="utf-8")]
     kpis = [d for d in docs if d["doc_type"] == "kpi"]
     assert len(kpis) == 21
     v2 = [c for d in kpis for c in v2_by_heading(d)]
-    assert len(v2) == 147  # 21 files x 7 headings, the prediction we checked earlier
+    assert len(v2) == 168  # 21 files x 8 sections: 7 headings plus 'Ownership and status'
 
 
 @pytest.mark.skipif(not Path(DOCS_PATH).exists(), reason="run the loader first (python -m rag.ingest)")

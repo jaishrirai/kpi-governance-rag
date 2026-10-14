@@ -9,9 +9,8 @@
 
 ## Next steps
 
-1. Rebuild the vector index with the new chunk header: `python -m rag.index --variant all`, then `python -m rag.index --sanity`. Paste the output; results go into `docs/walkthroughs/M1.md`.
-2. M1 hands-on check: change the overlap number in `chunking.py` (OVERLAP_TOKENS), predict how the V1 chunk count changes, run `python -m rag.chunking`, then restore it.
-3. M1 interview questions (3) answered by you.
-4. Push all M1 commits together with Claude Code, then close the issue for 1.4 (#5) and any other finished step issues.
-5. Step 1.7 done: 15 golden questions (G-001 to G-015).
-6. M2: Step 2.1 (draft the remaining golden questions), 2.2 (retrieval metrics), 2.3 (RRF hybrid search).
+1. Rebuild the vector index after the loader change: `python -m rag.index --variant all`, then `python -m rag.index --sanity`. Paste the output; results go into `docs/walkthroughs/M1.md`.
+2. Review and approve the golden set (`docs/GOLDEN_SET_REVIEW.md`, 40 questions with reference answers), then commit it.
+3. Step 2.2: work out MRR by hand, then build `eval/retrieval_eval.py` (decide the recall rule for list-style questions).
+4. Step 2.3: hybrid search with RRF, the grid of 3 variants x {vector, BM25, hybrid}, error analysis.
+5. Push the new commits with Claude Code.

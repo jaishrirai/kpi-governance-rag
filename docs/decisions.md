@@ -10,3 +10,4 @@
 | 6 | Company | "Kestrel Retail Group" (fictional) | Rich KPIs, clearly synthetic |
 | 7 | Demo | Streamlit app with a Retrieval Inspector | Shows hybrid + rerank visually |
 | 8 | Chunk header | `{title} ({doc_id}) \| {section}` on every chunk, all variants | Found in Step 1.6: V2 chunks of KPI-014 never contained the text "KPI-014", so neither BM25 nor the embedding could find the file by its code. Changed 2026-10-14, before the golden-set evaluation |
+| 9 | Ownership text | Loader appends Owner, Status, Version, Effective date, Domain (from the manifest) to every document's text | Found while grounding golden answers: these facts were metadata only, so no chunk could answer "who owns X / is X certified". Changed 2026-10-14, before the M2 evaluation |

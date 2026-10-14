@@ -4,6 +4,9 @@ One line per document: the 9 manifest fields + "text".
 PDFs are normalised so the chunker can treat every source the same way:
   - headings become Markdown lines ("# " for the title, "## " for a section)
   - each table row becomes one labelled line: "ID: KPI-001 | Owner: ... | Status: ..."
+Every document also ends with its owner, status and version taken from the manifest ("Owner: ...",
+"Status: ..."), so questions like "who owns X" or "is X certified" can be answered from the text;
+otherwise these facts would exist only in metadata, where search cannot see them.
 Run from the repo root:  PYTHONPATH=src python -m rag.ingest
 """
 import csv
@@ -113,6 +116,21 @@ def catalog_texts(path):
     }
 
 
+def ownership_block(row):
+    """Owner, status and version as text lines, from the manifest (the source of truth)."""
+    fields = [("Owner", row["owner"]), ("Status", row["certification"]), ("Version", row["version"]),
+              ("Effective date", row["effective_date"]), ("Domain", row["domain"])]
+    return "\n".join(f"{label}: {value}" for label, value in fields if value)
+
+
+def add_ownership(text, row):
+    """Append the block. Catalog rows are tiny, so the lines join the row itself; every other
+    document gets its own '## Ownership and status' section (one more V2 chunk)."""
+    if row["doc_type"] == "catalog":
+        return text + "\n" + ownership_block(row)
+    return text + "\n\n## Ownership and status\n" + ownership_block(row)
+
+
 def load_all():
     catalog = catalog_texts("data/raw/catalog/data_catalog.csv")
     docs = []
@@ -124,7 +142,7 @@ def load_all():
             text = load_pdf(row["source_path"])
         else:
             text = load_markdown(row["source_path"])
-        docs.append({**row, "text": text})
+        docs.append({**row, "text": add_ownership(text, row)})
     return docs
 
 
