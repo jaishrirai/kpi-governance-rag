@@ -609,3 +609,104 @@ Interview line: "Vector search finds meaning, BM25 finds matching terms such as 
 - "KPI-014": BM25 surfaced the catalog rows that list it, because short chunks score higher. The KPI-014 file itself was 4th in V1 and V3.
 - Bug found by this step: V2 chunks did not contain the code "KPI-014" in their text. Fix: the chunk header is now `Title (CODE) | Section`. After the fix, V2 finds KPI-014 with both BM25 and vector search.
 - Lesson: a retrieval problem can really be a chunking problem. Put identifiers in the text, not only in metadata.
+
+## Section 7: M1 notes on BM25, vector search, filtering and ranking
+
+These notes cover the concepts in `src/rag/bm25.py`, then initial ranking versus hybrid ranking with Reciprocal Rank Fusion (RRF).
+
+### 7.1 Tokenization in BM25
+
+Tokenization converts text into the terms the search algorithm matches. In `bm25.py`:
+
+```python
+TOKEN_RE = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
+```
+
+- Text is lowercased.
+- Hyphenated identifiers such as KPI-014 stay one token (`kpi-014`). This is a deliberate project choice because KPI identifiers matter for exact searches.
+- Why it matters: a search for KPI-014 matches the identifier reliably only if it is one token.
+- Interview takeaway: our custom tokenizer keeps hyphenated KPI IDs whole so BM25 can match governance-specific IDs.
+
+### 7.2 BM25 scoring
+
+BM25 is a keyword-based retrieval algorithm. It scores chunks by how well their terms match the query. Three factors drive the score:
+
+| Factor | Meaning |
+|---|---|
+| Term frequency (TF) | How often a query term occurs in a chunk, with diminishing returns. |
+| Inverse document frequency (IDF) | How distinctive a term is across the corpus. Rare terms carry more weight. |
+| Length normalization | Adjusts for chunk length so long chunks do not win just because they contain more words. |
+
+A query containing KPI-014 favours a chunk containing that exact identifier, especially because the identifier is distinctive. BM25 scores show relative relevance within one search. They are not probabilities that a result is correct.
+
+### 7.3 Vector search and embeddings
+
+Vector search focuses on semantic similarity, not only exact keyword matches.
+
+1. An embedding model converts a text chunk into a vector.
+2. The same model converts the user's query into a vector.
+3. The vector database compares the query vector with the stored chunk vectors.
+4. Chunks with higher similarity are returned as more relevant candidates.
+
+Example: "How is customer loss measured?" can retrieve a churn KPI even when the wording differs from the KPI definition. The model produces vectors that represent learned patterns in the text. It does not assign a human-readable meaning to each vector.
+
+Interview takeaway: BM25 is strong for exact terms and identifiers. Vector search is strong for semantic matches when the query and the source use different wording.
+
+### 7.4 Metadata filtering for deprecated KPIs
+
+`search()` in `bm25.py` supports a `where` parameter, for example:
+
+```python
+where = {"certification": "Certified"}
+```
+
+- Filtering decides which results are eligible to be returned.
+- Ranking decides the order of the eligible results.
+- A deprecated KPI can get the highest BM25 score because its text matches the query closely. A certification filter excludes it anyway.
+- The filter is implemented, but not every search applies it by default. The example shows how to use it.
+
+### 7.5 Initial ranking versus hybrid ranking
+
+**A. Initial ranking.** Each retrieval method ranks the chunks it finds. We have two: BM25 (keyword scores) and vector search (similarity). For the question "How is churn calculated?", an illustration (not actual project output):
+
+| Rank | BM25 | Vector |
+|---|---|---|
+| 1 | Chunk A (many matching keywords) | Chunk C (semantically closest) |
+| 2 | Chunk B (some matching keywords) | Chunk A (also semantically relevant) |
+
+Each method judges relevance in its own way, so the first places differ.
+
+**B. Hybrid ranking with RRF.** Hybrid retrieval combines the ranked lists from several retrieval methods. RRF uses each result's position in the lists, not the raw BM25 or vector scores:
+
+RRF(d) = sum over lists r of 1 / (k + rank_r(d))
+
+- d is a chunk, r is one ranked list (BM25 or vector), rank_r(d) is the chunk's position in that list.
+- k is a constant, commonly 60.
+- A chunk gets a contribution from every list it appears in. Good ranks across lists give a higher combined score.
+
+**C. Worked example (k = 60).**
+
+| Chunk | BM25 rank | Vector rank | RRF score |
+|---|---|---|---|
+| A | 1 | 2 | 1/61 + 1/62 = 0.0325 |
+| C | not in top results | 1 | 1/61 = 0.0164 |
+| B | 2 | not in top results | 1/62 = 0.0161 |
+
+A wins because both methods rank it highly. The scores are illustrative.
+
+**D. Why RRF?** BM25 scores and vector similarities are on different scales, so adding raw scores directly is not appropriate without normalization. RRF avoids the problem by combining rank positions. It does not guarantee that the top result is correct, certified or current. Excluding deprecated KPIs still needs an explicit filter or another policy control.
+
+**E. Where this fits.**
+
+BM25 retrieval (keyword ranking) and vector retrieval (semantic ranking) feed RRF hybrid fusion, which produces the final ranked candidates passed to later pipeline stages. Today `bm25.py` performs BM25 ranking only. RRF is planned for Step 2.3, after retrieval evaluation (Step 2.2).
+
+### 7.6 Interview-ready recap
+
+- Tokenization: the regex keeps hyphenated KPI IDs as single tokens for reliable exact matching.
+- BM25: ranks chunks by keyword matching, term frequency, rarity and length normalization.
+- Vector search: ranks chunks by semantic similarity between query and chunk embeddings.
+- Metadata filtering: excludes results that fail a metadata condition.
+- Initial ranking: each retrieval method produces its own ranked list.
+- Hybrid ranking: combines the BM25 and vector ranked lists.
+- RRF: combines rank positions, not raw scores.
+- Governance safeguard: RRF improves the combination but does not replace certification filters.
