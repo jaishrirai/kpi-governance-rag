@@ -9,9 +9,9 @@
 
 ## Next steps
 
-1. Push 1.3 and 1.4 (committed locally as 66ff746; push pending). Close issues for 1.3 and 1.4 on GitHub.
-2. V2 and BM25 labels changed to "Claude builds, you review and predict" (decided).
-3. Step 1.5: predict the sanity-query results, then build `src/rag/index.py`.
-4. Step 1.6: BM25, compare with vector on "KPI-014".
-5. Step 1.7: write about 4 more golden questions to reach 15.
-6. Delete the stale `docs/notes/` folder on the laptop.
+1. Rebuild the vector index with the new chunk header: `python -m rag.index --variant all`, then `python -m rag.index --sanity`. Paste the output; results go into `docs/walkthroughs/M1.md`.
+2. M1 hands-on check: change the overlap number in `chunking.py` (OVERLAP_TOKENS), predict how the V1 chunk count changes, run `python -m rag.chunking`, then restore it.
+3. M1 interview questions (3) answered by you.
+4. Push all M1 commits together with Claude Code, then close the issue for 1.4 (#5) and any other finished step issues.
+5. Step 1.7: write about 4 more golden questions to reach 15 (your 4 drafted questions can become G-012 to G-015).
+6. M2: Step 2.1 (draft the remaining golden questions), 2.2 (retrieval metrics), 2.3 (RRF hybrid search).

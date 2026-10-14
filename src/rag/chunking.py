@@ -6,7 +6,9 @@ Three variants (PLAN.md step 1.4):
   v2 by heading: one chunk per '## ' section; a section over the cap is split again
   v3 by unit:    one chunk per document; if it is over the cap, it is split again
 
-Every chunk's text starts with "{title} | {section}" so the title and section are never lost.
+Every chunk's text starts with "{title} ({doc_id}) | {section}" so the title, the document code
+and the section are never lost. The code (for example KPI-014) matters: without it in the text,
+neither keyword search nor the embedding can find a document by its code.
 The 450-token cap is measured on that header plus the body, because the header is embedded too.
 
 Run from the repo root:  PYTHONPATH=src python -m rag.chunking
@@ -101,8 +103,13 @@ def split_sections(body):
     return sections
 
 
+def chunk_header(doc, section):
+    """First line of every chunk: title, document code and section."""
+    return f"{doc['title']} ({doc['doc_id']}) | {section}\n"
+
+
 def make_chunk(doc, variant, n, section, body):
-    header = f"{doc['title']} | {section}\n"
+    header = chunk_header(doc, section)
     return Chunk(
         chunk_id=f"{doc['doc_id']}::{variant}::{n}",
         doc_id=doc["doc_id"],
@@ -115,7 +122,7 @@ def make_chunk(doc, variant, n, section, body):
 
 def pieces_for_section(doc, section, body):
     """Return the body as one piece if header + body fits the cap, otherwise split it."""
-    header = f"{doc['title']} | {section}\n"
+    header = chunk_header(doc, section)
     if estimate_tokens(header + body) <= CAP_TOKENS:
         return [body]
     max_chars = CAP_TOKENS * CHARS_PER_TOKEN - len(header)

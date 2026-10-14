@@ -31,9 +31,16 @@ def test_v2_gives_one_chunk_per_heading_with_ids_in_order():
     assert [c.chunk_id for c in chunks] == ["KPI-900::v2::0", "KPI-900::v2::1", "KPI-900::v2::2"]
 
 
-def test_every_chunk_starts_with_title_and_section_header():
+def test_every_chunk_starts_with_title_code_and_section_header():
     for c in v2_by_heading(fake_doc(THREE_SECTIONS)):
-        assert c.text.startswith(f"Test KPI | {c.section}\n")
+        assert c.text.startswith(f"Test KPI (KPI-900) | {c.section}\n")
+
+
+def test_every_chunk_in_every_variant_contains_its_document_code():
+    # Without the code in the text, a search for "KPI-900" could never find the document.
+    for build in (v1_fixed, v2_by_heading, v3_by_unit):
+        chunks = build(fake_doc(THREE_SECTIONS))
+        assert chunks and all("KPI-900" in c.text for c in chunks)
 
 
 def test_v2_long_section_is_split_and_every_piece_keeps_its_heading():
@@ -45,7 +52,7 @@ def test_v2_long_section_is_split_and_every_piece_keeps_its_heading():
 
 def test_cap_is_measured_with_the_header_included():
     # The body alone fits the cap. Adding the header pushes it over, so it must be split.
-    header_len = len("Test KPI | Formula\n")
+    header_len = len("Test KPI (KPI-900) | Formula\n")
     body = "x" * (CAP_TOKENS * CHARS_PER_TOKEN - 5)
     body = " ".join(body[i:i + 50] for i in range(0, len(body), 50))  # add spaces so it can be cut
     chunks = v2_by_heading(fake_doc(f"## Formula\n{body}"))
@@ -116,3 +123,11 @@ def test_glossary_table_rows_are_never_cut_in_any_variant():
             for line in chunk.text.splitlines():
                 if line.startswith("ID: KPI-"):
                     assert "Short definition:" in line, f"{chunker.__name__} cut a row: {line[:60]}"
+
+
+@pytest.mark.skipif(not Path(DOCS_PATH).exists(), reason="run the loader first (python -m rag.ingest)")
+def test_every_real_chunk_contains_its_document_code():
+    docs = [json.loads(l) for l in open(DOCS_PATH, encoding="utf-8")]
+    for variant, chunks in build_all(docs).items():
+        missing = [c.chunk_id for c in chunks if c.doc_id not in c.text]
+        assert not missing, f"{variant}: code missing from {missing[:3]}"

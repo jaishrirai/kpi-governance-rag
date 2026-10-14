@@ -69,16 +69,10 @@ CHUNKS_BUILT = Path("data/processed/chunks_v2.jsonl").exists()
 
 
 @pytest.mark.skipif(not CHUNKS_BUILT, reason="chunks not built")
-@pytest.mark.parametrize("variant", ["v1", "v3"])
+@pytest.mark.parametrize("variant", ["v1", "v2", "v3"])
 def test_real_corpus_finds_the_kpi_014_document_by_its_code(variant):
-    # Short catalog rows that list KPI-014 outrank the long KPI file (BM25 favours short chunks),
-    # so we check the top 5, not the top 1.
-    hits = bm25.bm25_search(variant, "KPI-014", k=5)
-    assert "KPI-014" in [h["doc_id"] for h in hits]
-
-
-@pytest.mark.skipif(not CHUNKS_BUILT, reason="chunks not built")
-@pytest.mark.xfail(strict=True, reason="V2 chunk text never contains the code KPI-014 (title line dropped, header has no id)")
-def test_known_gap_v2_cannot_find_its_own_kpi_by_code():
-    hits = bm25.bm25_search("v2", "KPI-014", k=10)
+    # Short catalog rows that list KPI-014 can outrank the long KPI file (BM25 favours short
+    # chunks), so we check the top 10, not the top 1. In V2 this only works because the chunk
+    # header carries the document code.
+    hits = bm25.bm25_search(variant, "KPI-014", k=10)
     assert "KPI-014" in [h["doc_id"] for h in hits]

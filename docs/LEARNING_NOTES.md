@@ -276,7 +276,7 @@ Reducing overlap does not necessarily reduce the chunk count. It depends on the 
 The chunker uses several mechanisms:
 
 - Headings: V2 identifies Markdown `##` sections such as Formula and Caveats.
-- Headers: each chunk begins with the document title and section, for example `Net Revenue Retention | Formula`.
+- Headers: each chunk begins with the document title and section, for example `Net Revenue Retention (KPI-010) | Formula`. The document code is part of the header on purpose: in Step 1.6 we found that without it, a search for "KPI-014" could not find the KPI-014 file in V2.
 - Metadata: chunks retain fields such as `doc_id`, title, domain, owner, certification, version and effective date.
 - Overlap: long text split into multiple pieces can repeat some preceding content.
 - Cut boundaries: the code tries to cut at line breaks first and spaces second, which can help preserve table rows.
