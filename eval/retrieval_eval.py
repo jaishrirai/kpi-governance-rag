@@ -119,10 +119,13 @@ def evaluate(rows, search_fn):
     return per_question, summary
 
 
-def git_sha():
+def git_sha(cwd=None):
+    """Short HEAD sha, plus "+dirty" if tracked files other than the run log itself have changes.
+    results/runs.csv is excluded: appending a run must not mark the code as dirty."""
     try:
-        sha = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True, check=True).stdout.strip()
-        dirty = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no"], capture_output=True, text=True, check=True).stdout.strip()
+        run = lambda *a: subprocess.run(["git", *a], capture_output=True, text=True, check=True, cwd=cwd).stdout.strip()  # noqa: E731
+        sha = run("rev-parse", "--short", "HEAD")
+        dirty = run("status", "--porcelain", "--untracked-files=no", "--", ".", f":(exclude){RUNS.as_posix()}")
         return sha + ("+dirty" if dirty else "")
     except Exception:
         return "unknown"
@@ -142,12 +145,13 @@ def append_runs(summary, meta, path=RUNS):
     path.parent.mkdir(parents=True, exist_ok=True)
     new_file = not path.exists()
     run_id = next_run_id(path)
+    sha = git_sha()  # once per experiment, so the dev and holdout rows always carry the same sha
     with open(path, "a", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=RUN_COLUMNS)
         if new_file:
             w.writeheader()
         for split, m in summary.items():
-            w.writerow({"run_id": run_id, "date": date.today().isoformat(), "git_sha": git_sha(),
+            w.writerow({"run_id": run_id, "date": date.today().isoformat(), "git_sha": sha,
                         "split": split, "n": m["n"], "recall_at_5": round(m["recall_at_5"], 4),
                         "hit_at_5": round(m["hit_at_5"], 4), "mrr_at_10": round(m["mrr_at_10"], 4),
                         "avg_latency_ms": round(m["avg_latency_ms"], 1), **meta})

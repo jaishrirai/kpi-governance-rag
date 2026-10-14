@@ -180,3 +180,40 @@ def test_real_golden_split_sizes():
     answerable = [r for r in rows if r["answerable"]]
     assert sum(1 for r in answerable if r["holdout"]) == 8
     assert sum(1 for r in answerable if not r["holdout"]) == 24
+
+
+# ---- run-log sha (fix) ----
+import subprocess  # noqa: E402
+
+import eval.retrieval_eval as ev  # noqa: E402
+
+
+def _git(cwd, *args):
+    subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *args], cwd=cwd, check=True, capture_output=True)
+
+
+def test_git_sha_ignores_run_log_changes_but_not_code_changes(tmp_path):
+    (tmp_path / "results").mkdir()
+    (tmp_path / "results" / "runs.csv").write_text("a\n")
+    (tmp_path / "code.py").write_text("x = 1\n")
+    _git(tmp_path, "init", "-q")
+    _git(tmp_path, "add", ".")
+    _git(tmp_path, "commit", "-q", "-m", "init")
+    clean = ev.git_sha(cwd=tmp_path)
+    assert clean != "unknown" and "+dirty" not in clean
+    (tmp_path / "results" / "runs.csv").write_text("a\nb\n")  # tracked run log changed
+    assert ev.git_sha(cwd=tmp_path) == clean
+    (tmp_path / "code.py").write_text("x = 2\n")              # tracked code changed
+    assert ev.git_sha(cwd=tmp_path) == clean + "+dirty"
+
+
+def test_dev_and_holdout_rows_share_one_sha_per_run(tmp_path, monkeypatch):
+    calls = iter(["aaa111", "bbb222", "ccc333"])
+    monkeypatch.setattr(ev, "git_sha", lambda: next(calls))
+    _, summary = evaluate(ROWS, fake_search)
+    meta = {"variant": "v1", "retriever": "vector", "rerank": "none", "fetch_depth": 50, "notes": ""}
+    path = tmp_path / "runs.csv"
+    ev.append_runs(summary, meta, path)
+    rows = list(csv.DictReader(open(path, encoding="utf-8")))
+    assert [r["split"] for r in rows] == ["dev", "holdout"]
+    assert {r["git_sha"] for r in rows} == {"aaa111"}
