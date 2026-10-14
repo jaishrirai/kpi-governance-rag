@@ -43,7 +43,7 @@ Already done before Claude Code: repo skeleton, `requirements.txt`, `.gitignore`
 - Concepts: Hallucination (via consistency checks), Structured output
 
 ### 1.7 Golden set, part 1 (my homework) (0:20)
-- [x] After the skim and BEFORE any search or retrieval run, I write 10 questions in `golden/golden_set.jsonl` (done: 11 written, G-001 to G-011; Claude drafts 29 more in Step 2.1)
+- [x] After the skim and BEFORE any search or retrieval run, I write 10 questions in `golden/golden_set.jsonl` (done: 15 written, G-001 to G-015; Claude drafts 25 more in Step 2.1)
 
 ### 1.3 Loaders (0:35)
 - [x] `src/rag/ingest.py`: markdown + YAML, CSV rows, PDF pages, written to `data/processed/documents.jsonl`

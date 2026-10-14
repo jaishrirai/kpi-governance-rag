@@ -13,5 +13,5 @@
 2. M1 hands-on check: change the overlap number in `chunking.py` (OVERLAP_TOKENS), predict how the V1 chunk count changes, run `python -m rag.chunking`, then restore it.
 3. M1 interview questions (3) answered by you.
 4. Push all M1 commits together with Claude Code, then close the issue for 1.4 (#5) and any other finished step issues.
-5. Step 1.7: write about 4 more golden questions to reach 15 (your 4 drafted questions can become G-012 to G-015).
+5. Step 1.7 done: 15 golden questions (G-001 to G-015).
 6. M2: Step 2.1 (draft the remaining golden questions), 2.2 (retrieval metrics), 2.3 (RRF hybrid search).
