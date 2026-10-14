@@ -1,0 +1,29 @@
+run_id,date,git_sha,variant,retriever,rerank,fetch_depth,split,n,recall_at_5,hit_at_5,mrr_at_10,avg_latency_ms,notes
+1,2026-10-14,497edd3+dirty,v1,vector,none,50,dev,24,0.7319,0.9583,0.8958,46.8,baseline V1 vector
+1,2026-10-14,497edd3+dirty,v1,vector,none,50,holdout,8,0.7292,0.875,0.6458,43.4,baseline V1 vector
+2,2026-10-14,497edd3+dirty,v1,bm25,none,50,dev,24,0.55,0.8333,0.5431,16.7,reference V1 BM25
+2,2026-10-14,497edd3+dirty,v1,bm25,none,50,holdout,8,0.4167,0.5,0.4918,0.7,reference V1 BM25
+3,2026-10-14,3258ca8,v1,vector,none,50,dev,24,0.7319,0.9583,0.8958,32.6,baseline v1 vector
+3,2026-10-14,3258ca8,v1,vector,none,50,holdout,8,0.7292,0.875,0.6458,21.7,baseline v1 vector
+4,2026-10-14,3258ca8,v1,bm25,none,50,dev,24,0.55,0.8333,0.5431,4.0,baseline v1 bm25
+4,2026-10-14,3258ca8,v1,bm25,none,50,holdout,8,0.4167,0.5,0.4918,0.3,baseline v1 bm25
+5,2026-10-14,3258ca8,v2,vector,none,50,dev,24,0.7215,0.9583,0.9062,23.2,baseline v2 vector
+5,2026-10-14,3258ca8,v2,vector,none,50,holdout,8,0.6458,0.75,0.65,21.8,baseline v2 vector
+6,2026-10-14,3258ca8,v2,bm25,none,50,dev,24,0.5569,0.8333,0.5903,4.5,baseline v2 bm25
+6,2026-10-14,3258ca8,v2,bm25,none,50,holdout,8,0.6667,0.75,0.4283,0.6,baseline v2 bm25
+7,2026-10-14,3258ca8,v3,vector,none,50,dev,24,0.7285,0.9583,0.8958,119.2,baseline v3 vector
+7,2026-10-14,3258ca8,v3,vector,none,50,holdout,8,0.7083,0.875,0.6493,129.3,baseline v3 vector
+8,2026-10-14,3258ca8,v3,bm25,none,50,dev,24,0.55,0.8333,0.5431,5.7,baseline v3 bm25
+8,2026-10-14,3258ca8,v3,bm25,none,50,holdout,8,0.4167,0.5,0.4918,0.4,baseline v3 bm25
+9,2026-10-14,5458fcd,v1,vector,none,50,dev,24,0.8153,1.0,0.9375,23.0,"baseline v1 vector, labels v2"
+9,2026-10-14,5458fcd,v1,vector,none,50,holdout,8,0.7292,0.875,0.6458,23.4,"baseline v1 vector, labels v2"
+10,2026-10-14,5458fcd,v1,bm25,none,50,dev,24,0.5917,0.8333,0.5639,3.9,"baseline v1 bm25, labels v2"
+10,2026-10-14,5458fcd,v1,bm25,none,50,holdout,8,0.4167,0.5,0.4918,0.2,"baseline v1 bm25, labels v2"
+11,2026-10-14,5458fcd,v2,vector,none,50,dev,24,0.8049,1.0,0.9271,22.8,"baseline v2 vector, labels v2"
+11,2026-10-14,5458fcd,v2,vector,none,50,holdout,8,0.6458,0.75,0.65,21.4,"baseline v2 vector, labels v2"
+12,2026-10-14,5458fcd,v2,bm25,none,50,dev,24,0.6403,0.875,0.5986,4.2,"baseline v2 bm25, labels v2"
+12,2026-10-14,5458fcd,v2,bm25,none,50,holdout,8,0.6667,0.75,0.4283,0.6,"baseline v2 bm25, labels v2"
+13,2026-10-14,5458fcd,v3,vector,none,50,dev,24,0.8118,1.0,0.9167,22.4,"baseline v3 vector, labels v2"
+13,2026-10-14,5458fcd,v3,vector,none,50,holdout,8,0.7083,0.875,0.6493,22.2,"baseline v3 vector, labels v2"
+14,2026-10-14,5458fcd,v3,bm25,none,50,dev,24,0.5917,0.8333,0.5639,4.0,"baseline v3 bm25, labels v2"
+14,2026-10-14,5458fcd,v3,bm25,none,50,holdout,8,0.4167,0.5,0.4918,0.2,"baseline v3 bm25, labels v2"

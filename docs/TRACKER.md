@@ -2,8 +2,8 @@
 
 | Milestone | Steps | Status | Hands-on check | Time |
 |---|---|---|---|---|
-| M1: searchable index | 1.4 chunking (done), 1.5 embeddings and Chroma (done), 1.6 BM25 (done) | Done; loader fix and golden set committed locally, push pending | Change the overlap in `chunking.py` and predict how the chunk count changes | About 3.5h |
-| M2: retrieval scores | 2.1 golden set (40, audited, committed), 2.2 metrics, 2.3 RRF | In progress (2.1 done) | Calculate one RRF score by hand on paper | About 2.5h |
+| M1: searchable index | 1.4 chunking (done), 1.5 embeddings and Chroma (done), 1.6 BM25 (done) | Done | Change the overlap in `chunking.py` and predict how the chunk count changes | About 3.5h |
+| M2: retrieval scores | 2.1 golden set (40, audited, committed), 2.2 metrics, 2.3 RRF | 2.1 and 2.2 done (runs 1 to 14, labels v2 baseline), 2.3 next | Calculate one RRF score by hand on paper | About 2.5h |
 | M3: answers with citations | 2.4 reranker, 2.5 grounded answers | To do | Ask 6 questions and grade the answers yourself | About 2h |
 | M4: shipped | 3.1 eval, 3.3 demo, 3.5 README | To do | Write the headline result in one paragraph and check the numbers match the runs | Remaining |
 
@@ -11,9 +11,8 @@
 
 | Milestone | Step | What we do | Purpose |
 |---|---|---|---|
-| M1 wrap-up | Log sanity results | Add the post-loader-fix vector sanity output to `docs/walkthroughs/M1.md` | Keeps the evidence of the ownership-text fix next to the earlier results |
-| M1 wrap-up | Push | Push all local commits via Claude Code, close issue #9 (2.1) | Makes the golden set and loader fix safe on GitHub and the tracker honest |
-| M2 | 2.2 Retrieval eval | You work MRR by hand (ranks 1, 3, missing, 2), then build `eval/retrieval_eval.py`: Recall@5, MRR@10, dev vs holdout, `results/runs.csv`, baseline V1 + vector. G-008 reported with its 5/6 Recall@5 ceiling plus Recall@10 | Turns "it feels better" into numbers, and gives the baseline every later change is compared with |
+| M2 wrap-up | Push | Push commits 497edd3 to the latest via Claude Code, close issue #10 (2.2) once `results/runs.csv` and `results/experiments.md` are committed | Puts the baseline and labels v2 on GitHub |
+| M2 (done) | 2.2 Retrieval eval | You work MRR by hand (ranks 1, 3, missing, 2), then build `eval/retrieval_eval.py`: Recall@5, MRR@10, dev vs holdout, `results/runs.csv`, baseline V1 + vector. G-008 reported with its 5/6 Recall@5 ceiling plus Recall@10 | Turns "it feels better" into numbers, and gives the baseline every later change is compared with |
 | M2 | Baseline review | Read every baseline miss by hand, check whether the golden labels or the retriever were wrong | Confirms the golden set carries information before we trust it; fix labels only with a written reason |
 | M2 | 2.3 Hybrid RRF | You do RRF by hand (rank 1 vector + rank 4 BM25 = 1/61 + 1/64), then build `rrf()` and `hybrid_search()`, run the grid of 3 variants x {vector, BM25, hybrid}, write error analysis in `results/experiments.md` | Finds which chunking and retrieval combination works best, and why, with holdout kept for the final check |
 | M2 | Deprecated and conflict check | Count how often KPI-007-V1 and FAQ-01 (the `conflicting_doc_ids`) appear in the top 5 | Measures the governance risk directly; decides if a certification filter or reranker is needed |
