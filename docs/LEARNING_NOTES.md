@@ -564,3 +564,48 @@ Source file for these notes: `src/rag/index.py` (run with `python -m rag.index -
 **Debugging principle:** Verify that the correct evidence exists in the chunks, then check whether retrieval selects it. If the correct evidence is retrieved but the generated answer is wrong, investigate answer generation.
 
 **Next milestone:** Evaluate retrieval systematically using the golden questions, rather than judging the system from three sanity queries alone.
+
+---
+
+## Section 6: Step 1.6 notes (BM25 keyword search)
+
+Source files: `src/rag/bm25.py` (code), `tests/test_bm25.py` (tests), results in `docs/walkthroughs/M1.md`.
+
+### Step 1.6 — BM25 Keyword Search
+
+Definition: BM25 is a keyword-based ranking algorithm that scores documents or chunks according to how well their terms match a query.
+
+Why we need it: Vector search captures semantic similarity but may miss exact identifiers such as `KPI-014`. BM25 helps retrieve chunks containing exact business terms, codes and names.
+
+Three scoring ideas:
+
+1. Term frequency: more occurrences can increase the score, with diminishing returns.
+2. Inverse document frequency: rare terms are more informative than terms appearing in most chunks.
+3. Length normalization: adjusts for chunk length so longer chunks do not win merely because they contain more text.
+
+Tokenization: The project proposes a tokenizer that preserves hyphenated identifiers such as `kpi-014` as one token. This protects the value of exact identifier matches.
+
+Planned implementation: `src/rag/bm25.py` will contain `tokenize()` and `bm25_search()`. The search function will support variant selection, top-k results and metadata filters, returning results in a format compatible with vector search.
+
+Vector search vs BM25:
+
+- Vector search finds semantically similar content.
+- BM25 ranks chunks based on matching terms and their statistical importance.
+- Hybrid search combines evidence from both retrieval methods.
+
+Important limitations: BM25 may miss synonyms or paraphrases. Vector search may miss exact identifiers. Neither method guarantees that the returned chunk is authoritative or sufficient to answer the question.
+
+Planned tests: Preserve `kpi-014` as one token, verify ranking on a controlled test set, verify metadata filtering, and remove zero-score results.
+
+Sanity-query prediction: BM25 may find `KPI-014` particularly well because it is an exact identifier. "Who owns the Customer 360 Dashboard?" also contains likely exact matches. "How is churn calculated?" may be harder if the source uses different terms such as "Formula." These are predictions to test, not confirmed results.
+
+Interview line: "Vector search finds meaning, BM25 finds matching terms such as exact IDs, and hybrid retrieval combines both to improve coverage."
+
+### Update after running Step 1.6 (real results)
+
+- `bm25.py` is built: `tokenize()` keeps `kpi-014` whole, `bm25_search(variant, query, k, where, stem)` supports metadata filters and returns the same fields as the vector search (with `score` instead of `similarity`).
+- "How is churn calculated" was the hardest for BM25, as predicted. The words "how", "is" and "calculated" appear in many KPI files, so Conversion Rate and Customer Lifetime Value outranked Churn Rate.
+- "Who owns the Customer 360 Dashboard" was NOT easy for BM25: the words match many KPI "Dashboards" sections and every document has an Owner line, so the catalog entry CAT-02 came 3rd in V1 and V3 and was missing in V2.
+- "KPI-014": BM25 surfaced the catalog rows that list it, because short chunks score higher. The KPI-014 file itself was 4th in V1 and V3.
+- Bug found by this step: V2 chunks did not contain the code "KPI-014" in their text. Fix: the chunk header is now `Title (CODE) | Section`. After the fix, V2 finds KPI-014 with both BM25 and vector search.
+- Lesson: a retrieval problem can really be a chunking problem. Put identifiers in the text, not only in metadata.
