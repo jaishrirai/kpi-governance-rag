@@ -537,3 +537,30 @@ You do not need to understand vector mathematics deeply yet. You should be able 
 5. Retrieval quality depends on more than chunking: the embedding model, search configuration, ranking, filters and quality of the source content also matter.
 
 Open question for you: If you embed all 334 chunks using the same model, will the vectors all have the same length? And will they all contain the same numbers? Explain why or why not.
+
+---
+
+## Section 5: Step 1.5 revision notes (embeddings and Chroma)
+
+Source file for these notes: `src/rag/index.py` (run with `python -m rag.index --sanity`, results in `docs/walkthroughs/M1.md`).
+
+**Purpose:** Convert chunks into vectors and store them in a searchable index.
+
+**Embedding model:** `BAAI/bge-small-en-v1.5`. It produces 384-dimensional vectors. The model normalizes vectors, and the index uses cosine distance.
+
+**Storage:** Chroma stores chunk IDs, text, embeddings and metadata. Three separate collections (`kpi_v1`, `kpi_v2`, `kpi_v3`) keep the chunking experiments separate.
+
+**Search flow:** Embed the query → search the selected collection → retrieve the nearest chunks → display their scores and metadata.
+
+**Interpreting similarity:** A higher score indicates greater similarity under the configured metric. It is not the probability that the result is correct.
+
+**Lessons from the sanity checks:**
+
+- Semantic search retrieves relevant KPI definitions but can also return deprecated content.
+- Exact identifiers such as `KPI-014` may need keyword or exact-match retrieval.
+- A chunk mentioning a dashboard is not necessarily the best source for its owner.
+- Metadata filtering can help enforce certification requirements, but it must be applied by the search code.
+
+**Debugging principle:** Verify that the correct evidence exists in the chunks, then check whether retrieval selects it. If the correct evidence is retrieved but the generated answer is wrong, investigate answer generation.
+
+**Next milestone:** Evaluate retrieval systematically using the golden questions, rather than judging the system from three sanity queries alone.
