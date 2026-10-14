@@ -64,3 +64,20 @@ Any POL, SOP, CAT or FAQ document cited in a reference answer must be expected, 
 ## Remaining note
 
 Holdout overlap is unchanged: G-004 with G-005 and G-015 on POL-04, G-008 with G-009 and G-013 on CAT-01 and CAT-02.
+
+## Labels v2 (three approved changes, supersede the rows above for G-001, G-005 and G-023)
+
+Reviewed after the V1 to V3 baselines (runs 3 to 8), using development questions only. The evidence came from the source text and from the vector ranks of the expected documents; no retrieval code, metric or holdout label was changed.
+
+| ID | Change | Why |
+|---|---|---|
+| G-001 | `expected_doc_ids` is now `[CAT-02]`; POL-04 moved to `related_insufficient_doc_ids`. The reference answer was trimmed to what CAT-02 supports. | CAT-02 alone holds the dashboard name, owner, 07:00 refresh, the six linked KPI ids and the six topic names, and it ranks first in every variant. POL-04 ranked 21 to 23 and is only needed for formal KPI names, which the reference now gives as a pointer. |
+| G-023 | `expected_doc_ids` is now `[KPI-011]`; POL-04 moved to related. The second key fact was rewritten as content (`Owner: Head of Customer Analytics`, `Status: Provisional`). | KPI-011 alone states the owner, status, version 0.7 and "Not approved for board reporting or the Executive KPI Pack". The old key fact only existed in POL-04's line format. KPI-011 ranks first everywhere. |
+| G-005 | Question rewritten to "Which KPI owner teams are represented in the KPI glossary?". POL-04 required, SOP-04 related. | The old question had two intents. No document defines KPI categories or says where the catalog is accessed, so it was ill-posed. The reference now says the glossary lists owners but does not define formal KPI categories, and makes no claim about catalog access. The `type` field stays `catalog`. |
+
+G-001 reference answer structure: sentences 1 and 2 hold facts supported directly by CAT-02 (dashboard, owner, refresh, linked KPI ids, topics). Sentence 3 is a pointer to POL-04 and the KPI documents for formal names and statuses, and those documents are listed as related, not required.
+
+Not changed: G-015 and G-006 (genuine near-miss retrieval cases, kept as hybrid and reranker test cases), every holdout label, and all other questions. A mechanical "unique key fact" rule was tried as a dry run and rejected, because it wrongly flagged required dashboard documents (for example in G-007 and G-013) and missed G-023.
+
+Scores: runs 1 to 8 use labels v1 and stay unchanged. Reruns on these labels carry "labels v2" in the `notes` field of `results/runs.csv`. Absolute dev scores shift slightly, so compare configurations only within the same label version.
+

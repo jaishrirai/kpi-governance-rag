@@ -13,15 +13,15 @@ H = holdout (never tuned against). Author `human` = your question, `claude` = dr
 
 **Question:** What are key KPIs and Dashboards serving Customer Domain. Give me strcutured asnwer.
 
-**Expected documents:** CAT-02, POL-04
+**Expected documents:** CAT-02
 
 **Conflicting (trap) documents:** KPI-007-V1
 
-**Related but not sufficient:** KPI-006, KPI-007, KPI-010, KPI-011, KPI-012, KPI-013
+**Related but not sufficient:** POL-04, KPI-006, KPI-007, KPI-010, KPI-011, KPI-012, KPI-013
 
-**Reference answer:** Customer-domain KPIs: Active Customer (30-day) KPI-006, Customer Churn Rate KPI-007, Net Revenue Retention KPI-010, Customer Lifetime Value KPI-011 (Provisional), Repeat Purchase Rate KPI-012 and Net Promoter Score KPI-013. The dashboard is the Customer 360 Dashboard (CAT-02), owned by the Head of Customer Analytics and refreshed daily at 07:00.
+**Reference answer:** The Customer domain is served by the Customer 360 Dashboard (CAT-02), owned by the Head of Customer Analytics and refreshed daily at 07:00. Its linked KPIs are KPI-006, KPI-007, KPI-010, KPI-011, KPI-012 and KPI-013, covering activity, churn, retention, lifetime value, repeat buying and NPS. Formal KPI names and statuses are in the KPI Glossary Summary (POL-04) and the individual KPI documents.
 
-**Notes:** draft ids by Claude, owner to confirm; list-style question | AUDIT: expected cut from 7 to 2 sufficient docs: CAT-02 lists the dashboard and its six linked KPIs, POL-04 gives the KPI names. Individual KPI files are related but not required. KPI-007-V1 is a deprecated trap. Recall@5 is now reachable.
+**Notes:** draft ids by Claude, owner to confirm; list-style question | AUDIT: expected cut from 7 to 2 sufficient docs: CAT-02 lists the dashboard and its six linked KPIs, POL-04 gives the KPI names. Individual KPI files are related but not required. KPI-007-V1 is a deprecated trap. Recall@5 is now reachable. | LABELS v2: POL-04 moved from expected to related. CAT-02 alone supports the dashboard, owner, refresh, the six KPI ids and the six topics; the reference was trimmed to what CAT-02 supports, with the formal names pointed to POL-04 as related evidence.
 
 ## G-002 | definition | author: human
 
@@ -67,17 +67,17 @@ H = holdout (never tuned against). Author `human` = your question, `claude` = dr
 
 ## G-005 | catalog | author: human
 
-**Question:** Can you tell me what are main areas/subject matter in which KPIs could be categorised? Is there a catalog which I can access? (KPI categories, and where the KPI list or catalog is found)
+**Question:** Which KPI owner teams are represented in the KPI glossary?
 
-**Expected documents:** POL-04, SOP-04
+**Expected documents:** POL-04
 
 **Conflicting (trap) documents:** none
 
-**Related but not sufficient:** none
+**Related but not sufficient:** SOP-04
 
-**Reference answer:** The official KPI list is the KPI Glossary Summary (POL-04). It groups KPIs by owner area: Finance (KPI-001 to 003), Sales (KPI-004, 005, 008, 009), Customer (KPI-006, 007, 010 to 013), Marketing (KPI-014, 015), Supply Chain (KPI-016 to 019) and Digital (KPI-020). Dashboards and source tables are listed in the data catalog, and access to them is requested through the data service portal (SOP-04). The corpus does not describe a separate access process for the KPI glossary itself.
+**Reference answer:** The KPI Glossary Summary (POL-04) lists each of the 20 official KPIs with its owner. The owner teams represented are the Head of Finance Analytics, Head of Sales Analytics, Head of Customer Analytics, Head of Marketing Analytics, Head of Supply Chain Analytics and Head of Digital Product. The glossary lists owners but does not define formal KPI categories.
 
-**Notes:** confirmed: key is POL-04 only. The answer is the KPI domains (Finance, Sales, Customer, Marketing, Supply Chain, Digital); CAT rows also help but are not required, so recall@5 stays reachable | AUDIT: second half ("is there a catalog I can access") is only partly answered; the data catalog is the CAT documents and SOP-04 explains access. Kept POL-04 as the only required doc so recall@5 stays reachable. Human decision: add the catalog part to the reference? | DECISION: question clarified, SOP-04 added as expected because the reference describes catalog access; no invented access steps for the glossary.
+**Notes:** confirmed: key is POL-04 only. The answer is the KPI domains (Finance, Sales, Customer, Marketing, Supply Chain, Digital); CAT rows also help but are not required, so recall@5 stays reachable | AUDIT: second half ("is there a catalog I can access") is only partly answered; the data catalog is the CAT documents and SOP-04 explains access. Kept POL-04 as the only required doc so recall@5 stays reachable. Human decision: add the catalog part to the reference? | DECISION: question clarified, SOP-04 added as expected because the reference describes catalog access; no invented access steps for the glossary. | LABELS v2: question rewritten by the owner of the project; POL-04 required, SOP-04 related. The reference states that the glossary has owners but no formal categories and makes no claim about where the catalog can be accessed.
 
 ## G-006 | ownership | author: human
 
@@ -321,15 +321,15 @@ H = holdout (never tuned against). Author `human` = your question, `claude` = dr
 
 **Question:** Who owns Customer Lifetime Value and is it approved for board reporting?
 
-**Expected documents:** KPI-011, POL-04
+**Expected documents:** KPI-011
 
 **Conflicting (trap) documents:** none
 
-**Related but not sufficient:** KPI-007
+**Related but not sufficient:** KPI-007, POL-04
 
 **Reference answer:** Customer Lifetime Value (KPI-011) is owned by the Head of Customer Analytics. It is Provisional (v0.7) and not approved for board reporting or the Executive KPI Pack.
 
-**Notes:** drafted by Claude, owner to review; Head of Customer Analytics; Provisional, not for the Executive KPI Pack
+**Notes:** drafted by Claude, owner to review; Head of Customer Analytics; Provisional, not for the Executive KPI Pack | LABELS v2: POL-04 moved from expected to related. KPI-011 alone states the owner, status, version 0.7 and "Not approved for board reporting or the Executive KPI Pack". Key facts rewritten as content, not POL-04 line format.
 
 ## G-024 (H) | ownership | author: claude
 
