@@ -45,6 +45,51 @@ Verified from source text and vector ranks (`scripts/inspect_misses.py`):
 
 No tuning against holdout. Holdout is run once per final configuration.
 
-## Next: Step 2.3 hybrid RRF
+## Step 2.3 hybrid RRF (chunk-level fusion, RRF k=60, 50 candidates per retriever, labels v2)
 
-Work the example by hand first (rank 1 in vector + rank 4 in BM25 = 1/61 + 1/64), then build `rrf()` and `hybrid_search()`, run V1, V2, V3 with hybrid on labels v2, and compare with the table above.
+### Which runs to trust
+
+Runs 15 to 17 were logged on a dirty tree (`c817082+dirty`) before the hybrid code was committed, so their sha does not identify the code used. Runs 18 to 20 repeat them on the clean commit `ab028be`; every metric matches runs 15 to 17 exactly to four decimals (only latency differs). Use runs 18 to 20 as the record. Runs 15 to 17 stay in `results/runs.csv` unchanged. A vector V1 rerun without logging reproduced the baseline (dev 0.815 / 1.000 / 0.938), so the runner change did not affect it.
+
+### Results (recall@5 / hit@5 / MRR@10)
+
+| Variant | Split | Vector | BM25 | Hybrid |
+|---|---|---|---|---|
+| V1 | dev | 0.815 / 1.000 / 0.938 | 0.592 / 0.833 / 0.564 | 0.758 / 0.958 / 0.758 |
+| V1 | holdout | 0.729 / 0.875 / 0.646 | 0.417 / 0.500 / 0.492 | 0.708 / 0.875 / 0.708 |
+| V2 | dev | 0.805 / 1.000 / 0.927 | 0.640 / 0.875 / 0.599 | 0.706 / 0.917 / 0.783 |
+| V2 | holdout | 0.646 / 0.750 / 0.650 | 0.667 / 0.750 / 0.428 | 0.708 / 0.875 / 0.729 |
+| V3 | dev | 0.812 / 1.000 / 0.917 | 0.592 / 0.833 / 0.564 | 0.758 / 0.958 / 0.753 |
+| V3 | holdout | 0.708 / 0.875 / 0.649 | 0.417 / 0.500 / 0.492 | 0.708 / 0.875 / 0.708 |
+
+### Prediction against result
+
+Stated before the runs: hybrid may improve recall, MRR is uncertain, and it may help G-015 and G-006. The pass-or-fail version proposed before the runs (V2 dev recall above 0.805, hit@5 stays 1.000, MRR@10 within 0.05 of 0.927, G-015 gains an expected document) failed on every test: recall 0.706, hit@5 0.917, MRR@10 0.783. G-015 in V1 and V3: POL-04 does enter the top 5, as hypothesised, but CAT-01 leaves, so recall stays 0.50 and the reciprocal rank falls from 1.00 to 0.25. G-006 does not improve (V1 recall 0.67 before and after).
+
+### Verified findings
+
+1. Dev: hybrid is below vector on all three metrics in all three variants (recall down 0.05 to 0.10, MRR@10 down 0.14 to 0.18). Holdout: equal or slightly higher, but n=8 and the V2 gain (hit@5 0.750 to 0.875) is one question.
+2. V1, vector against hybrid, per question (dev): G-007, G-013, G-014 and G-025 lose recall; G-003, G-013, G-015, G-018 and G-025 lose reciprocal rank; G-031 gains (0.50 to 1.00). G-025 alone is 0.042 of the 0.057 recall drop: CAT-08 is in the vector top 5 and falls to hybrid rank 9. Holdout: G-028 improves in rank (reciprocal rank 0.33 to 1.00), G-008 recall falls 0.50 to 0.33.
+3. Depth: the fused top 50 holds at least 20 distinct documents in V2 and at least 48 in V1 and V3, on all 40 questions. None is below 10. V1 and V3 have only 52 chunks, so depth 50 returns almost the whole index.
+4. Governance documents in the top 5, dev questions (24), V1 / V2 / V3:
+   - FAQ-01: vector 7 / 7 / 8, BM25 16 / 11 / 16, hybrid 16 / 7 / 15. Only one dev question declares FAQ-01 (expected, conflicting or related).
+   - KPI-007-V1: vector 4 / 7 / 5, BM25 10 / 8 / 10, hybrid 6 / 8 / 7. Four dev questions declare it (five for V2 hybrid).
+   - Holdout (8): FAQ-01 vector 0 / 2 / 0, hybrid 3 / 1 / 3; KPI-007-V1 at most 1 for any retriever.
+   - G-013 (V1): hybrid ranks the deprecated KPI-007-V1 first, above the current KPI-007; vector ranks KPI-007 first.
+
+### Interpretation (supported by the counts, not proven)
+
+BM25 puts FAQ-01 in the top 5 on 16 of 24 dev questions in V1 and V3. RRF weights BM25 ranks like vector ranks, even though BM25 is the weaker retriever here (dev recall 0.59 to 0.64 against 0.81), so FAQ-01 and SOP documents displace correct vector hits (G-025, G-007, G-014). V2 is affected less by FAQ-01 (hybrid 7, same as vector) and loses recall for a different reason: its G-006 top 5 is mostly KPI-016 to KPI-019 chunks, consistent with the earlier suspicion that repeated "Ownership and status" chunks add noise. That V2 explanation is untested.
+
+Hypothesis status: "hybrid lifts G-015 and G-006" is not supported; "the V2 holdout dip is noise" is consistent with the data (one question).
+
+### Proposed decision (pending review)
+
+- Use vector retrieval as the application default. V1 and V3 are tied on dev (recall 0.815 and 0.812, MRR@10 0.938 and 0.917); choose between them on non-retrieval grounds.
+- Keep the hybrid code and runner option and report equal-weight RRF as a negative result on this corpus. Do not tune k or weights on 24 dev questions after seeing the results.
+- The governance exposure exists with vector too: FAQ-01 is in the top 5 on 7 to 8 of 24 dev questions and only one of them declares it. Step 2.5 must handle conflicting and deprecated sources through metadata and the prompt, not rely on retrieval alone.
+- Proceed to the reranker (2.4) on vector candidates.
+
+### Rules kept
+
+No tuning against holdout. Holdout is run once per final configuration. Golden labels, metric definitions and baseline runs 1 to 14 were not changed in this step.
