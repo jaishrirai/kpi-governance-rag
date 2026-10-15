@@ -891,3 +891,25 @@ Step 2.4: evaluate reranking on the vector V1 reference configuration. Compare w
 **Interview line.** "I tested a cross-encoder reranker on top of vector retrieval. Dev was mixed, holdout improved on 8 questions, latency was about 50 times higher, and it did not enforce source authority, so I kept it optional and plan to settle it by end-to-end answer quality."
 
 **Check yourself.** Why can reranking not fix a retrieval miss? Why does a text-only scorer promote FAQ-01? What would you need to see to call reranking a win?
+
+## Section 10: Wrap-up of Steps 2.3 and 2.4 and what comes next
+
+**What we did.** Step 2.3 added hybrid retrieval: `rrf()` (k=60) fuses the vector and BM25 chunk rankings, then chunks collapse to documents. Step 2.4 added a cross-encoder reranker over the vector top 50, behind a `--rerank` flag. Both were evaluated on the same 40-question golden set (dev for decisions, holdout run once), with every run logged in `results/runs.csv`.
+
+**What we found.**
+- Hybrid with equal-weight RRF lost to vector on dev in all three chunkings. BM25 is the weaker retriever here, and RRF counted its ranks equally, so FAQ-01 reached the top 5 on 16 of 24 dev questions (vector: 7).
+- Reranking was mixed on dev (recall +0.010, MRR -0.028) and better on holdout (recall +0.146, MRR +0.271) but only 8 questions. 7 questions improved, 4 regressed, 1 mixed, 20 unchanged. A sign test gave p about 0.27. It cost about 50 times the latency and put FAQ-01 in the dev top 5 on 11 questions.
+- Neither method looks at certification or currentness. Retrieval quality and source authority are separate problems.
+
+**Decision (pending your review).** Vector V1 stays the default, reranking stays optional, and conflicts are handled in generation through metadata and the prompt.
+
+**Lessons to keep.**
+1. Predict before you run, then compare. Several of my expectations were wrong, and that is the learning.
+2. A small test set limits what you can claim. Say "promising, not proven".
+3. Log runs only on a clean commit, keep dirty runs, and mark reruns (runs 15 to 17 became 18 to 20, run 21 became 22).
+4. Do not tune on holdout, and do not change labels or metrics after seeing results.
+5. A citation proves a chunk was retrieved, not that it supports the claim. Validity and support are checked separately.
+
+**Preview of Step 2.5 concepts.** Grounding (answer only from the context), structured output (JSON checked with Pydantic), abstention (an explicit refusal instead of a guess), and metadata-based governance (label sources, let Certified govern). Think about: why does temperature 0 matter for governance answers, and why keep Deprecated chunks in context instead of deleting them?
+
+**Interview line.** "I tested hybrid and cross-encoder reranking against a vector baseline with a dev and holdout split. Neither was a clear win, neither handled source authority, so I kept vector as the default and handled governance in the generation step using certification metadata."

@@ -1,19 +1,44 @@
 # Build tracker
 
-Last updated after Step 2.4 (see `git log`). Runs logged: 1 to 22 (15 to 17 and 21 carry a dirty sha and are superseded by reruns 18 to 20 and 22). Tests: 86 passed, 2 skipped in the cloud shell (the skipped ones need `rank_bm25` and `chromadb`, so run the full suite in the Windows `.venv`).
+Last updated at the end of the 2026-10-15 session, after Step 2.4 (see `git log`). Runs logged: 1 to 22 (15 to 17 and 21 carry a dirty sha and are superseded by reruns 18 to 20 and 22). Tests: 102 passed, 2 skipped in the cloud shell (the skipped ones need `rank_bm25` and `chromadb`, so run the full suite in the Windows `.venv`).
 
 | Milestone | Steps | Status | Hands-on check | Time |
 |---|---|---|---|---|
 | M1: searchable index | 1.4 chunking (done), 1.5 embeddings and Chroma (done), 1.6 BM25 (done) | Done | Change the overlap in `chunking.py` and predict how the chunk count changes | About 3.5h |
 | M2: retrieval scores | 2.1 golden set (40, labels v2), 2.2 retrieval eval, 2.3 hybrid RRF, 2.4 cross-encoder rerank | All done. Hybrid lost to vector on dev. Rerank: dev mixed, holdout up (n=8), FAQ-01 exposure up, latency about 50x. Decision proposed: vector default, rerank optional | RRF by hand: done. Predictions recorded at each review | About 4h |
-| M3: answers with citations | 2.5 grounded answers | To do | Ask 6 questions and grade the answers yourself | About 2h |
+| M3: answers with citations | 2.5 grounded answers | Plan agreed, starts next session (model IDs in `.env` to fix first) | Ask 6 questions and grade the answers yourself | About 2h |
 | M4: shipped | 3.1 eval, 3.3 demo, 3.5 README | To do | Write the headline result in one paragraph and check the numbers match the runs | Remaining |
 
-## Immediate next step: review Step 2.4 and start 2.5
+## Progress snapshot (2026-10-15)
 
-1. Review `results/experiments.md` Step 2.4 and approve or change the proposed decision (vector default, rerank optional).
-2. Step 2.5 grounded generation: answers only from retrieved chunks, citations, a refusal path, and owner and status metadata passed to the model so conflicting and deprecated sources are handled in the prompt.
-3. Step 3.1 then compares vector with and without rerank on answer quality.
+| Milestone | Progress | What is left |
+|---|---|---|
+| M1 searchable index | 100% | Nothing |
+| M2 retrieval scores | 100% | Review and approve the retrieval decision (vector default, rerank optional) |
+| M3 answers with citations | 0% built, plan agreed | Fix `.env` model IDs, smoke test, `llm.py`, `generate.py`, prompt, `validate_citations()` (you write it), pipeline, CLI, 6 hand tests |
+| M4 shipped | 0% | 3.1 generation eval, 3.3 Streamlit demo, 3.5 README and write-up |
+
+Pipeline status: Load, Chunk, Embed and Index, Retrieve (vector, BM25, hybrid), Rerank are done and measured. Generate and the generation Evaluate are next. Pushed: through `7395aef`. Local only, not pushed: `347e2cc`, `9866915` and the wrap-up docs commit. Push when you ask.
+
+## Immediate next step: Step 2.5 grounded generation (plan for the next session)
+
+Scope rules: vector V1 is the reference, rerank stays optional, no retrieval tuning, no new frameworks, no governance engine.
+
+**Before coding (you, first thing):**
+1. In AI Studio, pick a current Gemini Flash-class model ID (free tier). Set `LLM_MODEL` and `JUDGE_MODEL` in `.env`. They still hold old Anthropic IDs (`claude-haiku-4-5`, `claude-sonnet-4-5`). Never paste the key in chat.
+2. Confirm `google-genai` is installed in the `.venv` (`pip install -r requirements.txt` if not).
+
+**Build order (stop after each):**
+1. Smoke test: one Gemini call at temperature 0 and 1, print token counts. Confirms key, model ID and package.
+2. `src/rag/llm.py` (single `complete()` wrapper), `src/rag/generate.py`, `prompts/answer_v1.txt` (JSON `{answer, citations, refused}`, temperature 0, 400 token cap, Pydantic check). Plus the `validate_citations()` stub with failing tests.
+3. You write `validate_citations()` (citations must be retrieved chunk IDs, one retry, then refusal). Then `src/rag/pipeline.py`, CLI `python -m rag.ask "..."`, and `results/traces.jsonl`.
+4. Hand test 6 questions (2 definitions, 1 KPI code, churn trap G-013, 2 unanswerable). Commit. Stop before 3.1.
+
+**Governance rule (simple, metadata based):** label every context chunk with doc ID, title, certification, version and effective date; sort Certified first; prompt says Certified and current sources govern and conflicts must be named; Deprecated and Provisional sources may only be mentioned as not authoritative; code flags answers that cite only non-Certified sources. Deprecated chunks stay in context (G-002 and G-013 expect "v1 is deprecated"). Known pairs: KPI-006 (Certified, 30 days) vs FAQ-01 (Provisional, 90 days), and KPI-007 vs KPI-007-V1 (Deprecated).
+
+**Limits to state honestly:** a valid citation only proves the chunk was retrieved, not that it supports the claim; the rule relies on the model following labels; there is no `superseded_by` field.
+
+**Then Step 3.1 (separate session):** automatic checks (citation validity, refusal on the 8 unanswerable, wrongly refused answerable, expected documents cited, key_facts matches), governance cases G-013, G-002, G-017, G-018, G-001, a judge for correctness and faithfulness after you hand-grade 10 answers, vector against vector+rerank, no prompt changes based on holdout.
 
 ## Next steps and their purpose
 
