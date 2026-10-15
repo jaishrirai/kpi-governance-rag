@@ -13,6 +13,7 @@ Run from the repo root:
   $env:PYTHONPATH = "src"
   python -m eval.retrieval_eval --variant v1 --retriever vector --notes "baseline"
   python -m eval.retrieval_eval --variant v1 --retriever hybrid --notes "hybrid RRF k=60"
+  python -m eval.retrieval_eval --variant v1 --retriever vector --rerank cross-encoder --notes "rerank 50"
 Retrievers: vector, bm25, hybrid (RRF over the vector and BM25 chunk lists, see rag.hybrid).
 """
 import argparse
@@ -176,16 +177,31 @@ def make_search(variant, retriever):
     return lambda q: index.search(client, variant, q, embed, k=FETCH_DEPTH)
 
 
+def make_reranked_search(search_fn):
+    """Wrap any search function: its FETCH_DEPTH candidates are reordered by the cross-encoder and
+    all of them are returned, so document-level evaluation sees the same depth as without reranking."""
+    from rag.rerank import load_reranker, rerank
+    score_fn = load_reranker()
+    return lambda q: rerank(q, search_fn(q), score_fn)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--variant", choices=["v1", "v2", "v3"], default="v1")
     ap.add_argument("--retriever", choices=["vector", "bm25", "hybrid"], default="vector")
+    ap.add_argument("--rerank", choices=["none", "cross-encoder"], default="none",
+                    help="reorder the retrieved candidates with a cross-encoder (rag.rerank)")
     ap.add_argument("--notes", default="")
     ap.add_argument("--no-log", action="store_true", help="print only, do not append to results/runs.csv")
     args = ap.parse_args()
     rows = [json.loads(l) for l in open(GOLDEN, encoding="utf-8") if l.strip()]
-    per_question, summary = evaluate(rows, make_search(args.variant, args.retriever))
-    print(f"variant={args.variant} retriever={args.retriever} fetch_depth={FETCH_DEPTH} "
+    search = make_search(args.variant, args.retriever)
+    rerank_name = "none"
+    if args.rerank == "cross-encoder":
+        from rag.rerank import RERANK_MODEL
+        search, rerank_name = make_reranked_search(search), RERANK_MODEL
+    per_question, summary = evaluate(rows, search)
+    print(f"variant={args.variant} retriever={args.retriever} rerank={rerank_name} fetch_depth={FETCH_DEPTH} "
           f"answerable={len(per_question)} (unanswerable skipped: {len(rows) - len(per_question)})")
     print(f"{'split':<9}{'n':>3}{'recall@5':>10}{'hit@5':>8}{'MRR@10':>9}{'ms/query':>10}")
     for split, m in summary.items():
@@ -196,7 +212,7 @@ def main():
             print(f"  {x['id']} [{x['split']}] recall={x['recall_at_5']:.2f} rr={x['rr_at_10']:.2f} "
                   f"expected={x['expected']} top5={x['top5']}")
     if not args.no_log:
-        meta = {"variant": args.variant, "retriever": args.retriever, "rerank": "none",
+        meta = {"variant": args.variant, "retriever": args.retriever, "rerank": rerank_name,
                 "fetch_depth": FETCH_DEPTH, "notes": args.notes}
         print(f"\nlogged as run {append_runs(summary, meta)} in {RUNS}")
 

@@ -300,3 +300,64 @@ def test_cli_rejects_unknown_retriever(monkeypatch):
     monkeypatch.setattr(sys, "argv", ["retrieval_eval", "--retriever", "rerank", "--no-log"])
     with pytest.raises(SystemExit):
         ev.main()
+
+
+def test_make_reranked_search_reorders_the_candidates_of_any_search(monkeypatch):
+    import rag.rerank as rr
+    monkeypatch.setattr(rr, "load_reranker", lambda: (lambda query, texts: [len(t) for t in texts]))
+    asked = []
+
+    def base(question):
+        asked.append(question)
+        return [{"chunk_id": "A::0", "doc_id": "A", "text": "x"}, {"chunk_id": "B::0", "doc_id": "B", "text": "xxx"}]
+
+    search = ev.make_reranked_search(base)
+    assert [h["chunk_id"] for h in search("q")] == ["B::0", "A::0"]
+    assert asked == ["q"]  # candidates come from the base search; reranking does not search again
+
+
+def test_cli_rerank_flag_wraps_the_search_and_logs_the_model(monkeypatch):
+    import rag.rerank as rr
+    seen = {}
+
+    def fake_wrap(search_fn):
+        seen["wrapped"] = True
+        return search_fn
+
+    def fake_append(summary, meta):
+        seen["meta"] = meta
+        return 99
+
+    monkeypatch.setattr(ev, "make_search", lambda variant, retriever: (lambda q: []))
+    monkeypatch.setattr(ev, "make_reranked_search", fake_wrap)
+    monkeypatch.setattr(ev, "append_runs", fake_append)
+    monkeypatch.setattr(sys, "argv", ["retrieval_eval", "--variant", "v1", "--retriever", "vector",
+                                      "--rerank", "cross-encoder", "--notes", "t"])
+    ev.main()
+    assert seen["wrapped"] is True
+    assert seen["meta"]["rerank"] == rr.RERANK_MODEL
+    assert seen["meta"]["retriever"] == "vector" and seen["meta"]["fetch_depth"] == FETCH_DEPTH
+
+
+def test_cli_without_rerank_flag_is_unchanged(monkeypatch):
+    seen = {}
+
+    def fail(search_fn):
+        raise AssertionError("reranking must be off by default")
+
+    def fake_append(summary, meta):
+        seen["meta"] = meta
+        return 99
+
+    monkeypatch.setattr(ev, "make_search", lambda variant, retriever: (lambda q: []))
+    monkeypatch.setattr(ev, "make_reranked_search", fail)
+    monkeypatch.setattr(ev, "append_runs", fake_append)
+    monkeypatch.setattr(sys, "argv", ["retrieval_eval", "--variant", "v1", "--retriever", "vector"])
+    ev.main()
+    assert seen["meta"]["rerank"] == "none"
+
+
+def test_cli_rejects_unknown_rerank_choice(monkeypatch):
+    monkeypatch.setattr(sys, "argv", ["retrieval_eval", "--rerank", "bge", "--no-log"])
+    with pytest.raises(SystemExit):
+        ev.main()

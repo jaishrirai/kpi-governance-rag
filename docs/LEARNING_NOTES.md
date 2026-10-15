@@ -752,3 +752,124 @@ P ranks first in both lists, so it scores twice as much as Q, which ranks first 
 - The best single rank does not guarantee the top score. Example 1 shows this.
 
 RRF combines positions, not raw similarity or BM25 scores. The Step 2.3 unit tests should reproduce these values.
+
+## Section 8: Step 2.3 notes (hybrid retrieval and Reciprocal Rank Fusion)
+
+### 8.1 What is hybrid retrieval?
+
+Hybrid retrieval combines two retrieval methods:
+
+- **Vector search:** finds semantically similar content using embeddings.
+- **BM25 search:** finds content by lexical term matching, which suits exact terms, names and identifiers.
+
+The aim is to combine their complementary strengths. Combining retrieval methods does not guarantee better results.
+
+### 8.2 How Reciprocal Rank Fusion (RRF) works
+
+RRF combines ranked lists without requiring their original scores to be on the same scale.
+
+RRF(d) = sum over ranked lists r of 1 / (k + rank_r(d))
+
+- d is a document or chunk.
+- r is one ranked result list (here, vector or BM25).
+- rank_r(d) is the item's 1-based position in that list.
+- k is a constant; this project uses 60.
+
+An item near the top of both lists accumulates score from both. An item in only one list receives a contribution from that list only.
+
+**Important:** RRF combines ranking positions, not relevance judgments or source authority. It does not know whether a document is certified, deprecated or contradictory.
+
+### 8.3 Implementation decisions
+
+- RRF is a pure function in `src/rag/fusion.py`.
+- Hybrid retrieval is in `src/rag/hybrid.py`. It runs vector and BM25 search with the same chunking variant and metadata filter, then fuses the results.
+- Fusion happens at the **chunk level**. Results are collapsed into unique documents afterwards, for evaluation.
+- Each retriever fetches 50 candidate chunks; the fused list returns up to 50 chunks before document-level evaluation.
+- The evaluation runner explicitly requests `k=FETCH_DEPTH` from hybrid retrieval. Returning only five chunks before document collapse would make the evaluation inconsistent with the existing runner.
+- Unit tests and mocked runner tests cover fusion behaviour, duplicate handling, rank tracking, filter arguments and evaluation fetch depth.
+
+### 8.4 Experimental setup
+
+- Dataset: 40 questions, 30 development and 10 holdout overall.
+- Eight unanswerable questions are excluded from retrieval metrics, leaving 24 answerable development questions and 8 answerable holdout questions.
+- Compared V1, V2 and V3 chunking with vector, BM25 and hybrid retrieval.
+- Metrics:
+  - **Recall@5:** fraction of expected documents retrieved in the top five.
+  - **Hit@5:** whether at least one expected document appears in the top five.
+  - **MRR@10:** rewards retrieving the first expected document at a higher rank within the top ten.
+- The hybrid runs were repeated after committing the implementation. Runs 18 to 20 reproduced runs 15 to 17 to four decimal places for the metrics; latency varied.
+
+### 8.5 Key experimental findings
+
+Development set:
+
+| Variant | Retriever | Recall@5 | Hit@5 | MRR@10 |
+|---|---|---:|---:|---:|
+| V1 | Vector | 0.815 | 1.000 | 0.938 |
+| V1 | Hybrid | 0.758 | 0.958 | 0.758 |
+| V2 | Vector | 0.805 | 1.000 | 0.927 |
+| V2 | Hybrid | 0.706 | 0.917 | 0.783 |
+| V3 | Vector | 0.812 | 1.000 | 0.917 |
+| V3 | Hybrid | 0.758 | 0.958 | 0.753 |
+
+Hybrid was worse than vector on all three metrics for all three variants on the development set.
+
+Holdout set:
+
+| Variant | Retriever | Recall@5 | Hit@5 | MRR@10 |
+|---|---|---:|---:|---:|
+| V1 | Vector | 0.729 | 0.875 | 0.646 |
+| V1 | Hybrid | 0.708 | 0.875 | 0.708 |
+| V2 | Vector | 0.646 | 0.750 | 0.650 |
+| V2 | Hybrid | 0.708 | 0.875 | 0.729 |
+| V3 | Vector | 0.708 | 0.875 | 0.649 |
+| V3 | Hybrid | 0.708 | 0.875 | 0.708 |
+
+Holdout results were mixed. V2 hybrid improved on V2 vector, but the hit-rate increase is one additional question out of eight. The holdout sample is too small to establish a general improvement.
+
+### 8.6 Error analysis and governance findings
+
+**Hybrid can push relevant evidence out of the top five.** For V1, question G-025 had `CAT-08` in the vector top five, but hybrid pushed it to rank 9. This accounts for a substantial part of the recall reduction. For G-015 (V1 and V3), hybrid brought the expected glossary document `POL-04` into the top five, but `CAT-01` dropped out. Recall stayed unchanged while MRR decreased. Average metrics should be supplemented with question-level analysis.
+
+**RRF can amplify a weak retriever's distractions.** For V1 on the development set:
+
+- `FAQ-01` appeared in the top five for 16 questions with hybrid, versus 7 with vector.
+- `KPI-007-V1`, the deprecated KPI, appeared in 6 hybrid top-five lists, versus 4 with vector.
+
+BM25 also retrieved `FAQ-01` frequently. A plausible explanation is that equal-weight RRF lets BM25's highly ranked but distracting results compete with vector results. The counts support investigating this explanation but do not prove causation.
+
+**Retrieval relevance is not source authority.** RRF ranks items by position in retrieval lists. It does not enforce governance rules. A production-style KPI governance system may need explicit metadata filters or other controls to keep deprecated or non-authoritative sources out of certified answers. Reranking can improve ordering but is not a substitute for such controls.
+
+### 8.7 Fetch-depth validation
+
+The fused top 50 contained enough distinct documents for document-level evaluation:
+
+- V1: 48 to 49 distinct documents per question.
+- V2: 20 to 38 distinct documents per question.
+- V3: 48 to 49 distinct documents per question.
+
+Every variant returned at least 10 distinct documents. V2 produced fewer because its chunking differs; this was not a failure of the depth check.
+
+### 8.8 Engineering decision
+
+**Decision:** keep vector retrieval as the reference baseline and keep hybrid retrieval as a documented comparison.
+
+- V1 and V3 vector were very similar on the development metrics.
+- Equal-weight RRF did not show an overall improvement on this corpus.
+- Do not tune RRF weights against the small development set just to force a hybrid win.
+- Carry the governance-document problem into the next stage of the project.
+
+### 8.9 Lessons learned
+
+1. Combining retrieval methods is an experiment, not an automatic upgrade.
+2. Rank fusion avoids comparing incompatible raw scores, but equal rank positions do not mean equal relevance.
+3. Evaluate at the level the application uses: chunk retrieval and document-level evidence are not interchangeable.
+4. Aggregate metrics can hide important individual failures; inspect representative questions.
+5. Small holdout sets give unstable estimates, so avoid strong claims based on one or two questions.
+6. Reproducibility needs the code version, configuration, labels version and results recorded.
+7. Governance constraints such as certification and deprecation need explicit handling, not just better semantic similarity.
+8. A negative result is valuable when the implementation is tested, the comparison is fair and the decision is documented.
+
+### 8.10 Next step
+
+Step 2.4: evaluate reranking on the vector V1 reference configuration. Compare with the existing vector baseline, inspect question-level changes, and keep source-authority controls as a separate concern for grounded generation.
