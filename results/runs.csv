@@ -39,3 +39,7 @@ run_id,date,git_sha,variant,retriever,rerank,fetch_depth,split,n,recall_at_5,hit
 19,2026-10-15,ab028be,v2,hybrid,none,50,holdout,8,0.7083,0.875,0.7292,96.4,"RERUN of runs 15-17 on clean commit ab028be, hybrid RRF k=60 fetch=50, labels v2"
 20,2026-10-15,ab028be,v3,hybrid,none,50,dev,24,0.7583,0.9583,0.7535,57.3,"RERUN of runs 15-17 on clean commit ab028be, hybrid RRF k=60 fetch=50, labels v2"
 20,2026-10-15,ab028be,v3,hybrid,none,50,holdout,8,0.7083,0.875,0.7083,54.3,"RERUN of runs 15-17 on clean commit ab028be, hybrid RRF k=60 fetch=50, labels v2"
+21,2026-10-15,7395aef+dirty,v1,vector,cross-encoder/ms-marco-MiniLM-L-6-v2,50,dev,24,0.8257,1.0,0.9097,2543.7,"V1 vector + cross-encoder/ms-marco-MiniLM-L-6-v2, rerank all 50 candidates, labels v2"
+21,2026-10-15,7395aef+dirty,v1,vector,cross-encoder/ms-marco-MiniLM-L-6-v2,50,holdout,8,0.875,1.0,0.9167,2387.0,"V1 vector + cross-encoder/ms-marco-MiniLM-L-6-v2, rerank all 50 candidates, labels v2"
+22,2026-10-15,347e2cc,v1,vector,cross-encoder/ms-marco-MiniLM-L-6-v2,50,dev,24,0.8257,1.0,0.9097,3921.5,"RERUN of run 21 on clean commit 347e2cc, V1 vector + cross-encoder rerank all 50 candidates, labels v2"
+22,2026-10-15,347e2cc,v1,vector,cross-encoder/ms-marco-MiniLM-L-6-v2,50,holdout,8,0.875,1.0,0.9167,3414.7,"RERUN of run 21 on clean commit 347e2cc, V1 vector + cross-encoder rerank all 50 candidates, labels v2"

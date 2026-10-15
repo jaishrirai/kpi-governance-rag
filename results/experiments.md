@@ -93,3 +93,62 @@ Hypothesis status: "hybrid lifts G-015 and G-006" is not supported; "the V2 hold
 ### Rules kept
 
 No tuning against holdout. Holdout is run once per final configuration. Golden labels, metric definitions and baseline runs 1 to 14 were not changed in this step.
+
+## Step 2.4 cross-encoder rerank (V1 vector candidates, labels v2)
+
+Config: V1, vector top 50 chunks, all 50 rescored by `cross-encoder/ms-marco-MiniLM-L-6-v2` (max_length 512), reordered, same document-level evaluation (fetch depth 50, cutoff top 5). No tuning. Holdout run once.
+
+### Which runs to trust
+
+Run 22 is the record: clean git sha 347e2cc, metrics identical to run 21. Run 21 was logged on `7395aef+dirty` (the code was not yet committed) and is kept unchanged. The V1 vector baseline reproduced exactly in the same session.
+
+### Results (recall@5 / hit@5 / MRR@10)
+
+| Config | Dev (n=24) | Holdout (n=8) |
+|---|---|---|
+| V1 vector baseline | 0.815 / 1.000 / 0.938 | 0.729 / 0.875 / 0.646 |
+| V1 vector + rerank (run 22) | 0.826 / 1.000 / 0.910 | 0.875 / 1.000 / 0.917 |
+| V1 hybrid (runs 18 to 20) | 0.758 / 0.958 / 0.758 | 0.708 / 0.875 / 0.708 |
+
+Latency: about 3.4 to 3.9 s per query with rerank in run 22 (2.4 to 2.5 s in run 21) against about 40 to 50 ms for vector. Latency varies between runs; the order of magnitude (about 50 to 100 times) is the finding.
+
+### Verified findings
+
+1. Dev is mixed: recall@5 +0.010 (about a quarter of one question), hit@5 unchanged, MRR@10 down 0.028. Holdout improves a lot (recall +0.146, MRR +0.271) but has only 8 answerable questions.
+2. Per question, vector to rerank, 32 answerable: 7 improved, 4 regressed, 1 mixed, 20 unchanged.
+   - Dev improved: G-015 (recall 0.50 to 1.00, POL-04 from vector rank 7 to rank 1), G-031 (recall 0.50 to 1.00), G-022 (reciprocal rank 0.50 to 1.00).
+   - Dev regressed: G-006 (recall 0.67 to 0.33, POL-04 lost), G-007 (0.67 to 0.33, CAT-03 lost), G-027 (0.67 to 0.33, reciprocal rank 0.50 to 0.33), G-026 (reciprocal rank 1.00 to 0.50). Mixed: G-003 (recall 0.50 to 0.75, reciprocal rank 1.00 to 0.50).
+   - Holdout improved: G-004 (recall 0 to 1.00), G-008 (reciprocal rank 0.33 to 1.00), G-028 and G-032 (reciprocal rank up to 1.00).
+3. POL-04 appears in both gains (G-015, G-004) and losses (G-006, G-027), so no simple document-type explanation holds.
+4. Sign test on the 11 decided questions (7 up, 4 down): one-sided p about 0.27, two-sided about 0.55. This is not evidence of a win.
+
+### Governance comparison (`scripts/compare_governance.py`, top 5, answerable questions)
+
+Counts of questions with the document in the top 5, declared count in brackets.
+
+| Config | Split | KPI-007-V1 | FAQ-01 | Deprecated above current KPI-007 |
+|---|---|---|---|---|
+| vector | dev | 4 [4] | 7 [1] | 2 of 6 |
+| vector | holdout | 0 [0] | 0 [0] | 1 of 1 |
+| rerank | dev | 4 [4] | 11 [1] | 1 of 4 |
+| rerank | holdout | 0 [0] | 1 [0] | 0 of 0 |
+
+- The vector rows match `diagnose_hybrid.py` (shared counting code), a consistency check.
+- Undeclared FAQ-01 appearances on dev rise from 6 to 10 with rerank. G-003 and G-004 now put FAQ-01 at rank 1.
+- KPI-007-V1 appears only on questions that declare it, in both configs. G-013 keeps KPI-007 first and KPI-007-V1 second.
+- The "deprecated above current" counts rest on very few questions (1 to 6). Do not read a trend into them.
+
+### Interpretation (hypotheses, not proven)
+
+The cross-encoder reads only text. It has no access to certification, currentness or source authority, so it can promote a conflicting document (FAQ-01) just as readily as a certified one. Reranking does not enforce source authority. It also cannot recover chunks missing from the vector top 50 (little limit here, since V1 has 52 chunks). The holdout gain may be noise at n=8; the dev result is neutral.
+
+### Proposed decision (pending review)
+
+- Keep vector-only as the default. Keep reranking as an optional configuration (`--rerank cross-encoder`), reported as a promising experiment, not a proven improvement.
+- Reasons: neutral dev result, 8-question holdout, much higher latency, higher FAQ-01 exposure.
+- Settle the question by end-to-end answer quality in Step 3.1. Handle conflicting and deprecated sources in Step 2.5 through metadata and the prompt, not through retrieval.
+- Not done on purpose: reranker tuning, other models, governance filters.
+
+### Rules kept
+
+No tuning against holdout; holdout run once for this configuration. Golden labels, metrics, retrieval logic and runs 1 to 20 unchanged. Run 21 kept as logged.

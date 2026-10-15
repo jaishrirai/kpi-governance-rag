@@ -873,3 +873,21 @@ Every variant returned at least 10 distinct documents. V2 produced fewer because
 ### 8.10 Next step
 
 Step 2.4: evaluate reranking on the vector V1 reference configuration. Compare with the existing vector baseline, inspect question-level changes, and keep source-authority controls as a separate concern for grounded generation.
+
+## Section 9: Step 2.4 notes (cross-encoder reranking)
+
+**Bi-encoder vs cross-encoder.** The embedding model (bge-small) encodes the query and each chunk separately, so chunk vectors are precomputed and search is fast. A cross-encoder reads the query and one chunk together and outputs one relevance score. It is more precise but must run once per candidate at query time, so it only suits a short candidate list. Here: 50 chunks per query, about 3 s on CPU against about 45 ms for vector search.
+
+**What reranking can and cannot do.** It reorders candidates; it cannot find a chunk retrieval missed. It judges text only, so it does not know a document is deprecated, uncertified or conflicting. In this project FAQ-01 (conflicting Active Customer definition) went from the top 5 on 7 dev questions to 11 after reranking, because it reads like a good answer.
+
+**Evaluation protocol.** All 50 candidates are rescored and returned, so document-level metrics use the same fetch depth and cutoff as before. Nothing about the protocol changed, which keeps runs comparable.
+
+**Results.** Dev: recall@5 0.815 to 0.826, hit@5 unchanged, MRR@10 0.938 to 0.910. Holdout: recall 0.729 to 0.875, MRR 0.646 to 0.917, with only 8 questions. Per question: 7 improved, 4 regressed, 1 mixed, 20 unchanged. A sign test on the 11 decided questions gives p about 0.27 one-sided, so it is not evidence of a win. The honest statement is "promising, not proven".
+
+**Reading small samples.** One question on 8 moves holdout recall by about 0.125. Dev's +0.010 recall is a quarter of a question. When dev and holdout disagree, report both and do not pick the flattering one.
+
+**Run hygiene.** Run 21 was logged before the code was committed, so its sha was `7395aef+dirty`. Run 22 is the clean rerun with identical metrics. Keep the dirty row, mark the rerun, trust the clean one.
+
+**Interview line.** "I tested a cross-encoder reranker on top of vector retrieval. Dev was mixed, holdout improved on 8 questions, latency was about 50 times higher, and it did not enforce source authority, so I kept it optional and plan to settle it by end-to-end answer quality."
+
+**Check yourself.** Why can reranking not fix a retrieval miss? Why does a text-only scorer promote FAQ-01? What would you need to see to call reranking a win?
