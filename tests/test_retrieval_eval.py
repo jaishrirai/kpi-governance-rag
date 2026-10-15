@@ -217,3 +217,86 @@ def test_dev_and_holdout_rows_share_one_sha_per_run(tmp_path, monkeypatch):
     rows = list(csv.DictReader(open(path, encoding="utf-8")))
     assert [r["split"] for r in rows] == ["dev", "holdout"]
     assert {r["git_sha"] for r in rows} == {"aaa111"}
+
+
+import sys  # noqa: E402
+import types  # noqa: E402
+
+
+@pytest.fixture
+def stub_models(monkeypatch):
+    """Replace chromadb and the embedding model so make_search runs without heavy libraries."""
+    from rag import index
+    client, embed = object(), object()
+    fake_chromadb = types.ModuleType("chromadb")
+    fake_chromadb.PersistentClient = lambda path: client
+    monkeypatch.setitem(sys.modules, "chromadb", fake_chromadb)
+    monkeypatch.setattr(index, "load_model", lambda: "model")
+    monkeypatch.setattr(index, "make_embedder", lambda model: embed)
+    return client, embed
+
+
+def test_make_search_hybrid_asks_for_fetch_depth_fused_chunks(monkeypatch, stub_models):
+    import rag.hybrid as hybrid
+    client, embed = stub_models
+    seen = {}
+
+    def fake_hybrid(c, variant, query, e, k=5, where=None, fetch_depth=None, rrf_k=None):
+        seen.update(client=c, variant=variant, query=query, embed=e, k=k, fetch_depth=fetch_depth)
+        return ["fused"]
+
+    monkeypatch.setattr(hybrid, "hybrid_search", fake_hybrid)
+    assert ev.make_search("v2", "hybrid")("churn rate") == ["fused"]
+    assert seen == {"client": client, "variant": "v2", "query": "churn rate", "embed": embed,
+                    "k": FETCH_DEPTH, "fetch_depth": FETCH_DEPTH}
+
+
+def test_make_search_vector_is_unchanged_and_never_calls_hybrid(monkeypatch, stub_models):
+    import rag.hybrid as hybrid
+    from rag import index
+    seen = {}
+
+    def fake_vector(c, variant, query, e, k=5, where=None):
+        seen.update(variant=variant, k=k)
+        return ["vec"]
+
+    def fail(*args, **kwargs):
+        raise AssertionError("hybrid_search must not run for the vector retriever")
+
+    monkeypatch.setattr(index, "search", fake_vector)
+    monkeypatch.setattr(hybrid, "hybrid_search", fail)
+    assert ev.make_search("v1", "vector")("q") == ["vec"]
+    assert seen == {"variant": "v1", "k": FETCH_DEPTH}
+
+
+def test_make_search_bm25_is_unchanged(monkeypatch):
+    import rag.bm25 as bm25
+    seen = {}
+
+    def fake_bm25(variant, query, k=5, where=None, stem=False):
+        seen.update(variant=variant, k=k)
+        return ["kw"]
+
+    monkeypatch.setattr(bm25, "bm25_search", fake_bm25)
+    assert ev.make_search("v3", "bm25")("q") == ["kw"]
+    assert seen == {"variant": "v3", "k": FETCH_DEPTH}
+
+
+def test_cli_accepts_hybrid_and_passes_it_to_make_search(monkeypatch, capsys):
+    seen = {}
+
+    def fake_make_search(variant, retriever):
+        seen["args"] = (variant, retriever)
+        return lambda question: []
+
+    monkeypatch.setattr(ev, "make_search", fake_make_search)
+    monkeypatch.setattr(sys, "argv", ["retrieval_eval", "--variant", "v2", "--retriever", "hybrid", "--no-log"])
+    ev.main()
+    assert seen["args"] == ("v2", "hybrid")
+    assert "retriever=hybrid" in capsys.readouterr().out
+
+
+def test_cli_rejects_unknown_retriever(monkeypatch):
+    monkeypatch.setattr(sys, "argv", ["retrieval_eval", "--retriever", "rerank", "--no-log"])
+    with pytest.raises(SystemExit):
+        ev.main()

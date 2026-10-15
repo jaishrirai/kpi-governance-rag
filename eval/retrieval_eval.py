@@ -12,6 +12,8 @@ evaluate (one retriever over the golden set), run_and_log (CLI, appends to resul
 Run from the repo root:
   $env:PYTHONPATH = "src"
   python -m eval.retrieval_eval --variant v1 --retriever vector --notes "baseline"
+  python -m eval.retrieval_eval --variant v1 --retriever hybrid --notes "hybrid RRF k=60"
+Retrievers: vector, bm25, hybrid (RRF over the vector and BM25 chunk lists, see rag.hybrid).
 """
 import argparse
 import csv
@@ -166,13 +168,18 @@ def make_search(variant, retriever):
     from rag import index
     client = chromadb.PersistentClient(path="data/index")
     embed = index.make_embedder(index.load_model())
+    if retriever == "hybrid":
+        # Ask for FETCH_DEPTH fused chunks (and fetch that many from each retriever) so the
+        # document-level protocol sees the same depth as the vector and BM25 baselines.
+        from rag.hybrid import hybrid_search
+        return lambda q: hybrid_search(client, variant, q, embed, k=FETCH_DEPTH, fetch_depth=FETCH_DEPTH)
     return lambda q: index.search(client, variant, q, embed, k=FETCH_DEPTH)
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--variant", choices=["v1", "v2", "v3"], default="v1")
-    ap.add_argument("--retriever", choices=["vector", "bm25"], default="vector")
+    ap.add_argument("--retriever", choices=["vector", "bm25", "hybrid"], default="vector")
     ap.add_argument("--notes", default="")
     ap.add_argument("--no-log", action="store_true", help="print only, do not append to results/runs.csv")
     args = ap.parse_args()
