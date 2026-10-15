@@ -710,3 +710,36 @@ BM25 retrieval (keyword ranking) and vector retrieval (semantic ranking) feed RR
 - Hybrid ranking: combines the BM25 and vector ranked lists.
 - RRF: combines rank positions, not raw scores.
 - Governance safeguard: RRF improves the combination but does not replace certification filters.
+
+### 7.7 Hand-worked RRF examples
+
+These examples use k = 60 and the formula from 7.5. Compute each score from the ranks, then compare.
+
+**Example 1: a document in both lists.**
+
+| Document | Vector rank | BM25 rank | Calculation | RRF score |
+|---|---|---|---|---|
+| A | 1 | 4 | 1/61 + 1/64 | 0.032018 |
+| B | 3 | 1 | 1/63 + 1/61 | 0.032266 |
+| C | 2 | not found | 1/62 | 0.016129 |
+
+B wins by a small margin. A ranks first in vector search, but its BM25 rank of 4 gives it less total score than B's combined ranks of 3 and 1.
+
+**Example 2: missing documents contribute nothing.**
+
+| Document | Vector rank | BM25 rank | Calculation | RRF score |
+|---|---|---|---|---|
+| X | 1 | not found | 1/61 | 0.016393 |
+| Y | 3 | 2 | 1/63 + 1/62 | 0.032002 |
+| Z | not found | 1 | 1/61 | 0.016393 |
+
+Y wins with roughly twice the score of X or Z, because it appears in both lists. X and Z tie.
+
+**What the examples show.**
+
+- Every list contributes. A document in both lists accumulates two terms.
+- Higher ranks contribute more: rank 1 gives 1/61, rank 3 gives 1/63.
+- A missing document contributes zero. It gets no invented rank and no negative score.
+- The best single rank does not guarantee the top score. Example 1 shows this.
+
+RRF combines positions, not raw similarity or BM25 scores. The Step 2.3 unit tests should reproduce these values.
