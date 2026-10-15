@@ -735,6 +735,15 @@ B wins by a small margin. A ranks first in vector search, but its BM25 rank of 4
 
 Y wins with roughly twice the score of X or Z, because it appears in both lists. X and Z tie.
 
+**Example 3: first place in both lists versus one list.**
+
+| Document | Vector rank | BM25 rank | Calculation | RRF score |
+|---|---|---|---|---|
+| P | 1 | 1 | 1/61 + 1/61 | 0.032787 |
+| Q | 1 | not found | 1/61 | 0.016393 |
+
+P ranks first in both lists, so it scores twice as much as Q, which ranks first in only one.
+
 **What the examples show.**
 
 - Every list contributes. A document in both lists accumulates two terms.
