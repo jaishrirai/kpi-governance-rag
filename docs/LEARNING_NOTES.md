@@ -913,3 +913,49 @@ Step 2.4: evaluate reranking on the vector V1 reference configuration. Compare w
 **Preview of Step 2.5 concepts.** Grounding (answer only from the context), structured output (JSON checked with Pydantic), abstention (an explicit refusal instead of a guess), and metadata-based governance (label sources, let Certified govern). Think about: why does temperature 0 matter for governance answers, and why keep Deprecated chunks in context instead of deleting them?
 
 **Interview line.** "I tested hybrid and cross-encoder reranking against a vector baseline with a dev and holdout split. Neither was a clear win, neither handled source authority, so I kept vector as the default and handled governance in the generation step using certification metadata."
+
+## Section 11: Complete findings from Steps 2.3 and 2.4 (hybrid retrieval and reranking)
+
+**The question we asked.** Can two common upgrades beat plain vector search on a governed KPI corpus: (a) hybrid retrieval that fuses vector and BM25 with RRF, and (b) a cross-encoder reranker on top of vector results?
+
+**Results at a glance** (V1, recall@5 / hit@5 / MRR@10).
+
+| Config | Dev (n=24) | Holdout (n=8) |
+|---|---|---|
+| Vector | 0.815 / 1.000 / 0.938 | 0.729 / 0.875 / 0.646 |
+| Hybrid | 0.758 / 0.958 / 0.758 | 0.708 / 0.875 / 0.708 |
+| Vector + rerank | 0.826 / 1.000 / 0.910 | 0.875 / 1.000 / 0.917 |
+
+**1. Did hybrid and RRF help?** No. Hybrid lost to vector on dev for V1, V2 and V3 (recall down 0.05 to 0.10, MRR@10 down 0.14 to 0.18). Holdout was about equal. RRF was implemented and tested correctly, so this is a result about the recipe, not a bug.
+
+**2. Why it lost (hypotheses backed by counts).**
+- RRF adds 1/(k + rank) from each list, so it treats both rankers as equally trustworthy. BM25 is the weaker one here (dev recall 0.59 to 0.64 against 0.81), so its mistakes get a full vote.
+- BM25 rewards shared words. FAQ-01 is chatty and word-rich, so it reached the dev top 5 on 16 of 24 questions (vector: 7). It displaced correct hits (G-025, G-007, G-014).
+- With 52 chunks in V1 and V3, vector search at depth 50 already ranks almost everything. Fusion has little new to add.
+- BM25's best skill is exact IDs and rare terms. Most golden questions are plain natural language, so they rarely reward it.
+- RRF did win some questions (G-031 on dev, G-028 on holdout). It lost more than it won.
+
+**3. Did reranking help?** Mixed. Dev recall +0.010 (a quarter of one question), hit@5 unchanged, MRR@10 down 0.028. Holdout improved a lot but has 8 questions, and one question moves holdout recall by about 0.125. Of 32 answerable questions: 7 improved, 4 regressed, 1 mixed, 20 unchanged. A sign test on the 11 decided gave p about 0.27. Latency rose from about 45 ms to several seconds per query on CPU.
+
+**4. What the cross-encoder can and cannot do.** It reads query and chunk together, so it is more precise than comparing separate vectors. But it only reorders the candidates it is given, it cannot find a missed chunk, and it sees text only. POL-04 appears in both gains (G-015, G-004) and losses (G-006, G-027), so no simple "document type" story holds.
+
+**5. The deeper lesson: relevance is not authority.** FAQ-01 (Provisional, informal) reads like a perfect answer to "what is an active customer" and beat the certified KPI-006 more often after reranking (FAQ-01 in the dev top 5 on 11 questions, up from 7). No retrieval score knows about certification, version or deprecation. That has to come from metadata and rules, which is why governance moves into generation (Step 2.5).
+
+**6. Retrieval is near its ceiling here.** Vector hit@5 is 1.000 on dev: every dev question has at least one expected document in the top 5. What is left are multi-document questions where part of the expected set is missing. More ranking tricks were unlikely to fix that, and the next gains are more likely to come from how the answer step uses and labels the sources.
+
+**7. Process lessons.**
+- Predict before running, then compare. My expectation that hybrid would lift G-015 and G-006 was wrong, and that is useful.
+- Keep dev for decisions and run holdout once. Never tune on holdout.
+- Report small samples honestly. Write "promising, not proven", and give the per-question picture, not only averages.
+- Log runs only on a clean commit. Keep dirty runs (15 to 17, 21) and mark the reruns (18 to 20, 22).
+- Do not change labels, metrics or baselines after seeing results.
+- A simple baseline that holds up is a good outcome. Complexity must earn its place.
+
+**8. Decision and direction.** Vector V1 is the default and reference. Hybrid and rerank stay as optional code with documented results. No tuning of RRF weights or the reranker on 24 dev questions, since that would fit noise. Handle governance in generation with certification labels, ordering and prompt rules. Judge rerank by end-to-end answer quality in Step 3.1. Reopen retrieval only if a larger golden set or an end-to-end gain justifies it.
+
+**9. Interview answers.**
+- "Did hybrid search help?" "Not on this corpus. Equal-weight RRF let a weaker BM25 ranker pull an informal FAQ into the top 5, and dev recall dropped 0.05 to 0.10. I kept vector as the default and documented why."
+- "Why not tune the weights?" "With 24 dev questions I would be fitting noise, and holdout is only 8 answerable questions."
+- "What does a reranker not solve?" "Source authority. A text-only scorer can prefer an informal FAQ over the certified definition, so I labelled sources with certification metadata at generation time."
+
+**Check yourself.** Why can fusion hurt when one ranker is weaker? Why does a small holdout limit the claim? Why can a reranker not fix a retrieval miss? What does hit@5 = 1.0 tell you about where the remaining problem is?

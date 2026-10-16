@@ -14,7 +14,7 @@ Last updated at the end of the 2026-10-15 session, after Step 2.4 (see `git log`
 | Milestone | Progress | What is left |
 |---|---|---|
 | M1 searchable index | 100% | Nothing |
-| M2 retrieval scores | 100% | Review and approve the retrieval decision (vector default, rerank optional) |
+| M2 retrieval scores | 100% | Nothing. Decision accepted 2026-10-16; conclusions are in `results/experiments.md` and `docs/LEARNING_NOTES.md` Section 11 |
 | M3 answers with citations | 0% built, plan agreed | Fix `.env` model IDs, smoke test, `llm.py`, `generate.py`, prompt, `validate_citations()` (you write it), pipeline, CLI, 6 hand tests |
 | M4 shipped | 0% | 3.1 generation eval, 3.3 Streamlit demo, 3.5 README and write-up |
 
@@ -25,7 +25,7 @@ Pipeline status: Load, Chunk, Embed and Index, Retrieve (vector, BM25, hybrid), 
 Scope rules: vector V1 is the reference, rerank stays optional, no retrieval tuning, no new frameworks, no governance engine.
 
 **Before coding (you, first thing):**
-1. In AI Studio, pick a current Gemini Flash-class model ID (free tier). Set `LLM_MODEL` and `JUDGE_MODEL` in `.env`. They still hold old Anthropic IDs (`claude-haiku-4-5`, `claude-sonnet-4-5`). Never paste the key in chat.
+1. Fix `.env`: replace the old Anthropic IDs with `LLM_MODEL=gemini-3.5-flash-lite` and `JUDGE_MODEL=gemini-3.8-flash` (current stable IDs per the Gemini models page on 2026-10-16; the smoke test confirms free-tier access, fallback `gemini-3.6-flash`). Paste the key yourself, never in chat.
 2. Confirm `google-genai` is installed in the `.venv` (`pip install -r requirements.txt` if not).
 
 **Build order (stop after each):**

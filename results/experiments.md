@@ -152,3 +152,16 @@ The cross-encoder reads only text. It has no access to certification, currentnes
 ### Rules kept
 
 No tuning against holdout; holdout run once for this configuration. Golden labels, metrics, retrieval logic and runs 1 to 20 unchanged. Run 21 kept as logged.
+
+## Conclusions for Steps 2.3 and 2.4 (retrieval phase closed)
+
+Status: proposed decision accepted by the project owner on 2026-10-16. No further retrieval experiments before generation.
+
+1. **Hybrid (equal-weight RRF, k=60) did not help.** It lost to vector on dev in V1, V2 and V3 (recall down 0.05 to 0.10, MRR@10 down 0.14 to 0.18). Holdout was equal or slightly higher, on 8 questions. `rrf()` is correct (hand-worked examples and tests); the equal weighting is what does not suit this corpus.
+2. **Why (supported by the counts, not proven):** BM25 is the weaker retriever (dev recall 0.59 to 0.64 against 0.81 for vector), yet RRF gives its ranks the same weight. It pulls FAQ-01 and SOP documents into the top 5 (FAQ-01 on 16 of 24 dev questions in V1 and V3, against 7 for vector). G-025 alone is 0.042 of the 0.057 V1 recall drop.
+3. **Reranking is a promising experiment, not a proven improvement.** Dev is mixed (recall +0.010, hit@5 unchanged, MRR@10 -0.028). Holdout improves (recall +0.146, MRR@10 +0.271) on 8 questions. Per question: 7 improved, 4 regressed, 1 mixed, 20 unchanged; sign test p about 0.27. Cost: about 50 to 100 times the latency.
+4. **Retrieval is near its ceiling on this corpus.** Vector already finds an expected document on every dev question (hit@5 1.000). Remaining misses are multi-document questions where part of the expected set is missing, and V1 and V3 have only 52 chunks, so depth 50 returns almost the whole index.
+5. **Retrieval quality is not source authority.** Neither method uses certification, currentness or authority. Reranking raised FAQ-01 (Provisional, conflicting) in the dev top 5 from 7 to 11 questions.
+6. **Decision.** Vector V1 is the default and the reference baseline. Hybrid and rerank stay as optional, documented code. No tuning of RRF weights, k or the reranker on 24 dev questions. Governance is handled in generation (Step 2.5) through certification labels, ordering and prompt rules. Rerank is judged on end-to-end answer quality in Step 3.1.
+7. **What would change this:** a larger golden set, a weighted hybrid chosen on fresh questions, or a clear end-to-end gain from rerank in Step 3.1.
+8. **Limits to state in the README:** 40 questions (24 dev, 8 answerable holdout), synthetic corpus, document-level metrics, questions drafted with Claude.
