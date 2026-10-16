@@ -6,7 +6,7 @@ Last updated at the end of the 2026-10-15 session, after Step 2.4 (see `git log`
 |---|---|---|---|---|
 | M1: searchable index | 1.4 chunking (done), 1.5 embeddings and Chroma (done), 1.6 BM25 (done) | Done | Change the overlap in `chunking.py` and predict how the chunk count changes | About 3.5h |
 | M2: retrieval scores | 2.1 golden set (40, labels v2), 2.2 retrieval eval, 2.3 hybrid RRF, 2.4 cross-encoder rerank | All done. Hybrid lost to vector on dev. Rerank: dev mixed, holdout up (n=8), FAQ-01 exposure up, latency about 50x. Decision proposed: vector default, rerank optional | RRF by hand: done. Predictions recorded at each review | About 4h |
-| M3: answers with citations | 2.5 grounded answers | Plan agreed, starts next session (model IDs in `.env` to fix first) | Ask 6 questions and grade the answers yourself | About 2h |
+| M3: answers with citations | 2.5 grounded answers | Done (6 hand tests recorded). Limits found: vector misses bare KPI codes, answers sometimes incomplete; both measured in 3.1, not patched | Ask 6 questions and grade the answers yourself | About 2h |
 | M4: shipped | 3.1 eval, 3.3 demo, 3.5 README | To do | Write the headline result in one paragraph and check the numbers match the runs | Remaining |
 
 ## Progress snapshot (2026-10-15)
@@ -15,30 +15,21 @@ Last updated at the end of the 2026-10-15 session, after Step 2.4 (see `git log`
 |---|---|---|
 | M1 searchable index | 100% | Nothing |
 | M2 retrieval scores | 100% | Nothing. Decision accepted 2026-10-16; conclusions are in `results/experiments.md` and `docs/LEARNING_NOTES.md` Section 11 |
-| M3 answers with citations | 0% built, plan agreed | Fix `.env` model IDs, smoke test, `llm.py`, `generate.py`, prompt, `validate_citations()` (you write it), pipeline, CLI, 6 hand tests |
+| M3 answers with citations | Built: generation layer, `validate_citations()`, pipeline, CLI, trace log, 6 hand tests | Review, then Step 3.1. Known issues: vector misses KPI codes; answers sometimes incomplete |
 | M4 shipped | 0% | 3.1 generation eval, 3.3 Streamlit demo, 3.5 README and write-up |
 
 Pipeline status: Load, Chunk, Embed and Index, Retrieve (vector, BM25, hybrid), Rerank are done and measured. Generate and the generation Evaluate are next. Pushed: through `7395aef`. Local only, not pushed: `347e2cc`, `9866915` and the wrap-up docs commit. Push when you ask.
 
-## Immediate next step: Step 2.5 grounded generation (plan for the next session)
+## Immediate next step: review Step 2.5, then Step 3.1 generation evaluation
 
-Scope rules: vector V1 is the reference, rerank stays optional, no retrieval tuning, no new frameworks, no governance engine.
+Step 2.5 is built and hand-tested (`results/step2_5_hand_tests.md`). Do not start 3.1 until the review is done.
 
-**Before coding (you, first thing):**
-1. Fix `.env`: replace the old Anthropic IDs with `LLM_MODEL=gemini-3.5-flash-lite` and `JUDGE_MODEL=gemini-3.8-flash` (current stable IDs per the Gemini models page on 2026-10-16; the smoke test confirms free-tier access, fallback `gemini-3.6-flash`). Paste the key yourself, never in chat.
-2. Confirm `google-genai` is installed in the `.venv` (`pip install -r requirements.txt` if not).
-
-**Build order (stop after each):**
-1. Smoke test: one Gemini call at temperature 0 and 1, print token counts. Confirms key, model ID and package.
-2. `src/rag/llm.py` (single `complete()` wrapper), `src/rag/generate.py`, `prompts/answer_v1.txt` (JSON `{answer, citations, refused}`, temperature 0, 400 token cap, Pydantic check). Plus the `validate_citations()` stub with failing tests.
-3. You write `validate_citations()` (citations must be retrieved chunk IDs, one retry, then refusal). Then `src/rag/pipeline.py`, CLI `python -m rag.ask "..."`, and `results/traces.jsonl`.
-4. Hand test 6 questions (2 definitions, 1 KPI code, churn trap G-013, 2 unanswerable). Commit. Stop before 3.1.
-
-**Governance rule (simple, metadata based):** label every context chunk with doc ID, title, certification, version and effective date; sort Certified first; prompt says Certified and current sources govern and conflicts must be named; Deprecated and Provisional sources may only be mentioned as not authoritative; code flags answers that cite only non-Certified sources. Deprecated chunks stay in context (G-002 and G-013 expect "v1 is deprecated"). Known pairs: KPI-006 (Certified, 30 days) vs FAQ-01 (Provisional, 90 days), and KPI-007 vs KPI-007-V1 (Deprecated).
-
-**Limits to state honestly:** a valid citation only proves the chunk was retrieved, not that it supports the claim; the rule relies on the model following labels; there is no `superseded_by` field.
-
-**Then Step 3.1 (separate session):** automatic checks (citation validity, refusal on the 8 unanswerable, wrongly refused answerable, expected documents cited, key_facts matches), governance cases G-013, G-002, G-017, G-018, G-001, a judge for correctness and faithfulness after you hand-grade 10 answers, vector against vector+rerank, no prompt changes based on holdout.
+**Step 3.1 plan (separate session, vector V1 reference, rerank optional):**
+1. Automatic checks over the dev questions, then holdout once: citation validity, refusal accuracy on the 8 unanswerable questions, wrongly refused answerable questions, expected documents cited, `key_facts` coverage.
+2. Governance cases G-013, G-002, G-017, G-018, G-001 scored separately.
+3. Hand grade 10 answers before reading any LLM judge; judge correctness and faithfulness after.
+4. Measure the two known issues before touching anything: answers dropping key facts (prompt rule 5 hypothesis) and vector missing bare KPI codes (add a few code-style questions as a separate diagnostic, not into the golden set without approval).
+5. No prompt or retrieval changes tuned on holdout.
 
 ## Next steps and their purpose
 

@@ -959,3 +959,56 @@ Step 2.4: evaluate reranking on the vector V1 reference configuration. Compare w
 - "What does a reranker not solve?" "Source authority. A text-only scorer can prefer an informal FAQ over the certified definition, so I labelled sources with certification metadata at generation time."
 
 **Check yourself.** Why can fusion hurt when one ranker is weaker? Why does a small holdout limit the claim? Why can a reranker not fix a retrieval miss? What does hit@5 = 1.0 tell you about where the remaining problem is?
+
+## Section 12: Step 2.5 notes (grounded generation and citation validation)
+
+**What we built so far.** `src/rag/llm.py` (the only code that calls Gemini), `src/rag/generate.py` (context formatting, prompt, JSON parsing, one model call), `prompts/answer_v1.txt` (the versioned system prompt), `src/rag/validate.py` (`validate_citations`), and `scripts/try_generate.py` (a review script). Commits: `2ffae85` (generation layer) and the validation commit after it. The pipeline and CLI come next (Stage 3).
+
+**Core ideas.**
+- **System prompt vs user message.** The system prompt is the standing job description (answer only from context, cite chunk IDs, refuse with a fixed sentence, Certified sources govern). The user message is today's task: the question plus the retrieved chunks. Keeping the prompt in a versioned file lets us change it without touching code and record which version produced an answer.
+- **`format_context()` is the model's whole world.** Each chunk is labelled `[chunk_id] doc_id | certification` before its text. The label is the citation handle (the model can only cite IDs it can see) and it carries the only authority signal the model gets. Retrieval hits do not carry version or effective date, so the model sees them only if they appear in the chunk text.
+- **One door to the provider.** `complete()` is the single function that touches Gemini. It runs at temperature 0, asks for JSON, retries only transient errors (429, 500, 503), and returns tokens and latency. `generate()` takes the model call as a parameter, so tests use a fake and need no network.
+- **Hallucination demo.** Asked about KPI-010 with no documents, the model gave a fluent, confident, generic definition that did not match our file (12-month window, same-cohort comparison, returns deducted, new customers excluded). Fluency is not evidence. Grounding, an explicit refusal rule, citations and a code check are four layers, each covering the gap in the one before.
+- **Stdlib JSON check instead of Pydantic.** One less dependency; the shape check is a few lines and fully tested.
+
+**Hand-test baseline** (`results/step2_5_hand_tests.md`, saved verbatim).
+1. Churn definition (G-013): correct formula and the v1 deprecation noted, but the dashboards the question asked for were missing.
+2. CEO (G-036): correct refusal with the exact sentence, although 5 chunks were retrieved. The model decided to refuse, not empty retrieval.
+3. Active Customer days (G-018): 30 days, KPI-006 wins, the 90-day figure called informal. It matched all five written predictions. Caveat: KPI-006 itself says 90 days is not certified, so this is the easy version of the trap.
+Usage was about 2,000 to 2,400 input tokens and 24 to 215 output tokens per call, thinking tokens 0, latency about 10 s on the free tier.
+
+**Citation validation (V1 contract).** `validate_citations(citations, refused, retrieved_chunk_ids)` returns a list of problems (empty means valid). Two separate dimensions:
+- **Provenance:** every cited ID must be one of the retrieved chunk IDs, exact match (a document ID like `KPI-006` or a wrong-case ID is invalid).
+- **Consistency:** `refused=True` means no citations; `refused=False` means at least one.
+It returns reasons, not just pass or fail, so the trace log can say why. Duplicates are allowed; an unknown ID is reported once. Problems are reported together, not stopped at the first.
+A third dimension, **support** (does the chunk really say what the answer claims), cannot be checked by this function. A valid citation proves a chunk was in the context, not that it supports the claim. Step 3.1's judge and hand grading cover it. Other known gaps: bracketed IDs in the answer text may differ from the `citations` list, and uncited sentences are not detected.
+
+**Lessons.**
+1. Write the expected answer before you run the model, then compare. G-018 matched, and the exercise showed it was the easy version of the trap.
+2. Separate failure types: retrieval limits (POL-01 not retrieved, so a key fact is unreachable) are not generation failures.
+3. Keep the model replaceable and the checks pure. Both make tests fast and honest.
+4. A prompt is a request, not a guarantee. The code check is what turns "please cite real chunks" into something you can measure.
+
+**Interview line.** "I ground answers in retrieved chunks, force structured JSON with citations and an explicit refusal, and validate in code that every citation is a retrieved chunk and that refused and citations agree. I know that does not prove support, so the evaluation step judges that separately."
+
+**Check yourself.** Why return a list of problems instead of raising? Why exact-match IDs? What can a valid citation still get wrong? Why can the system prompt alone not guarantee grounding?
+
+**Stage 3: the pipeline (`src/rag/pipeline.py`, `src/rag/ask.py`).** `ask()` runs retrieve, then generate, then validate, then writes one JSON line to `results/traces.jsonl`. It is glue only: it never edits, hides or retries an answer. If validation fails you get the model's answer plus the list of problems. Retrieval and generation are passed in as functions, so 14 tests run with fakes and no network. The CLI `python -m rag.ask "..."` prints the answer, citations, `validation: OK` or `FAILED`, tokens and timings. Exit codes: 0 valid, 1 error, 2 answer returned but validation failed.
+- **Trace record** (one line per call): timestamp, question, variant, retriever, k, prompt version, retrieved chunk IDs, model, answer, citations, refused, valid, problems, input/output/thinking tokens, retrieval and generation latency, error. A failure in either stage is logged with the stage named in `error`, so a failed call leaves a record too.
+- **Why log everything.** When an answer is wrong you need to know what was retrieved, what the model saw and what the check said. The trace answers all three without rerunning.
+
+**Hand-test results (tests 3b to 6, details in `results/step2_5_hand_tests.md`).**
+- G-018 through the pipeline: 30 days, KPI-006 wins, the FAQ called "provisional and not authoritative". The word "provisional" can only come from the certification label in the context, which is evidence the labelling works. Same chunks, different wording from the first run: temperature 0 is not a determinism guarantee.
+- G-034 (churn last quarter): correct refusal even though KPI-007 (the churn definition) was retrieved. It did not explain the formula or invent a value.
+- G-023 (CLV owner and approval): owner and "not approved" correct and cited, but "Provisional" and the Executive KPI Pack were missing.
+- KPI-010 asked by code: KPI-010 was not retrieved (SOPs came back instead), so the model refused. Generation behaved correctly; retrieval failed.
+
+**Two findings to carry forward.**
+1. **Vector search can miss a KPI asked for by code.** Embeddings capture meaning; the code "KPI-010" is a rare token that BM25 handles better, and process words like "owns" pulled in SOPs. The golden set has no bare-code questions, so our retrieval scores never tested it. This does not change the Step 2.3 and 2.4 conclusions, which were measured on the golden set, but it is a real limitation for users. Candidates for later: BM25 or hybrid for ID-like queries, or extracting KPI codes from the question. Not tuned now.
+2. **Accurate but incomplete answers.** The churn answer dropped the dashboards, the CLV answer dropped the status. Plausible cause: prompt rule 5 ("be concise, at most four sentences"). Untested hypothesis. Step 3.1 should measure `key_facts` coverage on dev, then try a prompt v2 tuned on dev only.
+
+**What validation does and does not tell you.** The KPI-010 run printed `validation: OK` on a refusal that was caused by a retrieval miss. Validation checks form (provenance and consistency), not whether the right chunks were retrieved or whether the answer is complete. Retrieval failures show up in the trace as a missing chunk ID, not as a validation problem.
+
+**Interview line (extended).** "End to end, I retrieve with vector search, generate a cited JSON answer at temperature 0, validate the citations in code, and log a trace of every call. On six hand tests there were no invented facts and both unanswerable questions were refused, but I found two limits: vector search missed a KPI asked by code, and answers were sometimes accurate but incomplete. I recorded both and measure them in the evaluation step instead of patching them by eye."
+
+**Check yourself.** Why did the model refuse the KPI-010 question, and is that a generation failure? Why is `validation: OK` not enough to trust an answer? What would you measure before changing the prompt to be less concise?
