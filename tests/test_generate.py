@@ -122,3 +122,11 @@ def test_generate_sends_the_correction_to_the_model():
     calls = []
     g.generate("q", HITS, complete_fn=fake_llm(GOOD, calls), correction="CORRECTION")
     assert calls[0][1].endswith("\n\nCORRECTION")
+
+
+def test_v2_prompt_is_v1_plus_exactly_one_completeness_rule():
+    rule = next(line for line in g.load_prompt("answer_v2").splitlines() if line.startswith("6. State every key fact"))
+    v1, v2 = g.load_prompt("answer_v1"), g.load_prompt("answer_v2")
+    assert v2.count(rule) == 1
+    assert v2.replace(rule + "\n", "") == v1
+    assert "Completeness" not in v1 and "State every key fact" not in v1

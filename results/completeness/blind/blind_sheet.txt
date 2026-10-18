@@ -1,0 +1,101 @@
+=== RUN A ===
+[A G-018] Q: How many days do we use to count an Active Customer?
+A: We use a 30-day window to count an Active Customer, which is the only certified definition [KPI-006::v1::0]. An informal team FAQ mentions a 90-day window, but that source is provisional and not authoritative [FAQ-01::v1::0].
+
+[A G-013] Q: Customer churn rate - how is that calculated? What dashboards use it?
+A: Customer Churn Rate (KPI-007) is calculated using the formula: Churn Rate % = Customers in the start base with no purchase for 180 days by quarter end / Customers in the start base x 100, where the start base is every identified customer with at least one completed order in the 180 days before the quarter starts [KPI-007::v1::0]. The dashboards that use Customer Churn Rate are the Customer 360 Dashboard and the Executive KPI Pack [KPI-007::v1::0]. (The older v1 version is deprecated and must not be used) [KPI-007::v1::0, KPI-007-V1::v1::0].
+
+[A G-002] Q: What KPIs around customer churn which are enabled right now?
+A: Customer Churn Rate v2 (KPI-007) is currently enabled and certified, defined as the share of recently active customers who stop buying after 180 days without a completed purchase [KPI-007::v1::0]. The previous version, KPI-007-V1, counted only account closures and is deprecated and not authoritative [KPI-007::v1::0, KPI-007-V1::v1::0].
+
+[A G-017] Q: What is NRR and how is it different from churn?
+A: Net Revenue Retention (NRR) measures how much net revenue Kestrel keeps from an existing group of customers over 12 months, including growth and losses from customers who stop buying, while excluding newly acquired customers [KPI-010::v1::0]. In contrast, Customer Churn Rate measures the share of recently active customers who stop buying from Kestrel, defined as 180 days passing without a completed purchase in any channel [KPI-007::v1::0].
+
+[A G-001] Q: What are key KPIs and Dashboards serving Customer Domain. Give me strcutured asnwer.
+A: The dashboard serving the Customer Domain is the Customer 360 Dashboard (CAT-02), which provides a single view of customer health including activity, churn, retention, lifetime value, repeat buying, and NPS, with linked KPIs KPI-006, KPI-007, KPI-010, KPI-011, KPI-012, and KPI-013 [CAT-02::v1::0]. Additionally, the customers table (CAT-08) in the Customer domain holds one row per identified customer containing loyalty tier, account status, first order date, acquisition channel, and staff and test flags, with linked KPIs KPI-006, KPI-007, KPI-010, KPI-011, KPI-012, and KPI-014 [CAT-08::v1::0].
+
+=== RUN B ===
+[B G-018] Q: How many days do we use to count an Active Customer?
+A: We use a 30-day window to count an Active Customer, which is the only certified definition [KPI-006::v1::0]. An informal team FAQ mentions a 90-day window [FAQ-01::v1::0], but this source is provisional and not authoritative [FAQ-01::v1::0].
+
+[B G-013] Q: Customer churn rate - how is that calculated? What dashboards use it?
+A: Customer Churn Rate is calculated as the percentage of customers in the start base with no purchase for 180 days by quarter end divided by customers in the start base, multiplied by 100 [KPI-007::v1::0]. The start base consists of every identified customer with at least one completed order in the 180 days before the quarter starts [KPI-007::v1::0]. This metric is used on the Customer 360 Dashboard and the Executive KPI Pack [KPI-007::v1::0].
+
+[B G-002] Q: What KPIs around customer churn which are enabled right now?
+A: The enabled and certified KPI for customer churn is Customer Churn Rate v2 (KPI-007), which has a certified status, an effective date of 2026-04-01, and is owned by the Head of Customer Analytics [KPI-007::v1::0]. Version 1 (KPI-007-V1) is deprecated and must not be used [KPI-007::v1::0, KPI-007-V1::v1::0].
+
+[B G-017] Q: What is NRR and how is it different from churn?
+A: Net Revenue Retention (NRR) measures how much net revenue Kestrel keeps from an existing group of customers over 12 months, including growth and losses from customers who stop buying, while excluding newly acquired customers [KPI-010::v1::0]. In contrast, Customer Churn Rate is the share of recently active customers who stop buying from Kestrel, defined as 180 days passing without a completed purchase in any channel [KPI-007::v1::0].
+
+[B G-001] Q: What are key KPIs and Dashboards serving Customer Domain. Give me strcutured asnwer.
+A: The Customer Domain includes the Certified Customer 360 Dashboard (CAT-02) which provides a single view of customer health including activity, churn, retention, lifetime value, repeat buying, and NPS, with linked KPIs KPI-006, KPI-007, KPI-010, KPI-011, KPI-012, and KPI-013 [CAT-02::v1::0]. Additionally, the Certified customers table (CAT-08) holds one row per identified customer containing loyalty tier, account status, first order date, acquisition channel, and staff and test flags, with linked KPIs KPI-006, KPI-007, KPI-010, KPI-011, KPI-012, and KPI-014 [CAT-08::v1::0].
+
+=== RUN C ===
+[C G-018] Q: How many days do we use to count an Active Customer?
+A: We use a 30-day window to count an Active Customer, as the 30-day window is the only certified definition [KPI-006::v1::0]. While an informal provisional source mentions 90 days, it is not authoritative [FAQ-01::v1::0].
+
+[C G-013] Q: Customer churn rate - how is that calculated? What dashboards use it?
+A: Customer Churn Rate (KPI-007) is calculated as the percentage of customers in the start base with no purchase for 180 days by quarter end divided by customers in the start base, multiplied by 100 [KPI-007::v1::0]. The start base consists of every identified customer with at least one completed order in the 180 days before the quarter starts [KPI-007::v1::0]. It is used in the Customer 360 Dashboard and the Executive KPI Pack [KPI-007::v1::0].
+
+[C G-002] Q: What KPIs around customer churn which are enabled right now?
+A: The enabled and certified KPI around customer churn is Customer Churn Rate v2 (KPI-007), which replaced the deprecated v1 version [KPI-007::v1::0, KPI-007-V1::v1::0]. KPI-007 defines churn as the share of recently active customers who stop buying from Kestrel, specifically when 180 days pass without a completed purchase [KPI-007::v1::0].
+
+[C G-017] Q: What is NRR and how is it different from churn?
+A: Net Revenue Retention (NRR) measures how much net revenue Kestrel keeps from an existing group of customers over 12 months, including growth and losses from customers who stop buying, while excluding new customers acquired during the period [KPI-010::v1::0]. In contrast, Customer Churn Rate measures the share of recently active customers who stop buying from Kestrel, defined as 180 days passing without a completed purchase in any channel [KPI-007::v1::0].
+
+[C G-001] Q: What are key KPIs and Dashboards serving Customer Domain. Give me strcutured asnwer.
+A: The Customer domain includes the Certified Customer 360 Dashboard (CAT-02) which provides a single view of customer health including activity, churn, retention, lifetime value, repeat buying, and NPS, refreshed daily at 07:00 and linked to KPIs KPI-006, KPI-007, KPI-010, KPI-011, KPI-012, and KPI-013 [CAT-02::v1::0]. Additionally, the Certified customers table (CAT-08) holds one row per identified customer containing loyalty tier, account status, first order date, acquisition channel, staff and test flags, refreshed daily at 05:00, and linked to KPIs KPI-006, KPI-007, KPI-010, KPI-011, KPI-012, and KPI-014 [CAT-08::v1::0]. Both are owned by the Head of Customer Analytics [CAT-02::v1::0, CAT-08::v1::0].
+
+=== RUN D ===
+[D G-018] Q: How many days do we use to count an Active Customer?
+A: An Active Customer is counted using a 30-day window, which is the only certified definition [KPI-006::v1::0]. An informal provisional source suggests 90 days, but this is not authoritative [FAQ-01::v1::0].
+
+[D G-013] Q: Customer churn rate - how is that calculated? What dashboards use it?
+A: Customer Churn Rate (KPI-007) is calculated as the percentage of customers in the start base with no purchase for 180 days by quarter end divided by customers in the start base, multiplied by 100 [KPI-007::v1::0]. It is used in the Customer 360 Dashboard and the Executive KPI Pack [KPI-007::v1::0].
+
+[D G-002] Q: What KPIs around customer churn which are enabled right now?
+A: The currently enabled and certified customer churn KPI is Customer Churn Rate v2 (KPI-007), which measures the share of recently active customers who stop buying from Kestrel after 180 days of inactivity [KPI-007::v1::0]. An older version (KPI-007-V1) is deprecated and must not be used [KPI-007::v1::0, KPI-007-V1::v1::0].
+
+[D G-017] Q: What is NRR and how is it different from churn?
+A: Net Revenue Retention (NRR) measures how much net revenue Kestrel keeps from an existing group of customers over 12 months, including growth and losses from customers who stop buying [KPI-010::v1::0]. In contrast, Customer Churn Rate measures the share of recently active customers who stop buying from Kestrel, defined as 180 days passing without a completed purchase [KPI-007::v1::0].
+
+[D G-001] Q: What are key KPIs and Dashboards serving Customer Domain. Give me strcutured asnwer.
+A: The Customer Domain includes the following dashboards and tables: 
+- Customer 360 Dashboard (CAT-02): Provides a single view of customer health including activity, churn, retention, lifetime value, repeat buying, and NPS, linked to KPIs KPI-006, KPI-007, KPI-010, KPI-011, KPI-012, and KPI-013 [CAT-02::v1::0]. 
+- Customers table (CAT-08): Holds customer information such as loyalty tier, account status, first order date, acquisition channel, and staff and test flags, linked to KPIs KPI-006, KPI-007, KPI-010, KPI-011, KPI-012, and KPI-014 [CAT-08::v1::0].
+
+=== RUN E ===
+[E G-018] Q: How many days do we use to count an Active Customer?
+A: An Active Customer is counted using a 30-day window, which is the only certified definition [KPI-006::v1::0]. An informal provisional source suggests 90 days, but this is not authoritative [FAQ-01::v1::0].
+
+[E G-013] Q: Customer churn rate - how is that calculated? What dashboards use it?
+A: Customer Churn Rate is calculated as the share of recently active customers who stop buying from Kestrel, specifically determined by the formula: Customers in the start base with no purchase for 180 days by quarter end divided by Customers in the start base multiplied by 100 [KPI-007::v1::0]. It is used on the Customer 360 Dashboard and the Executive KPI Pack [KPI-007::v1::0].
+
+[E G-002] Q: What KPIs around customer churn which are enabled right now?
+A: The currently enabled customer churn KPI is Customer Churn Rate (KPI-007) version 2.0, which is certified [KPI-007::v1::0]. Version 1 (KPI-007-V1) is deprecated and must not be used [KPI-007::v1::0, KPI-007-V1::v1::0].
+
+[E G-017] Q: What is NRR and how is it different from churn?
+A: Net Revenue Retention (NRR) measures how much net revenue Kestrel keeps from an existing group of customers over 12 months, including growth and losses from stopped buying while excluding new customers [KPI-010::v1::0]. In contrast, Customer Churn Rate measures the share of recently active customers who stop buying from Kestrel, defined as going 180 days without a completed purchase in any channel [KPI-007::v1::0].
+
+[E G-001] Q: What are key KPIs and Dashboards serving Customer Domain. Give me strcutured asnwer.
+A: The Customer Domain includes the following certified assets:
+- **Customer 360 Dashboard (CAT-02):** Provides a single view of customer health including activity, churn, retention, lifetime value, repeat buying, and NPS, with linked KPIs (KPI-006, KPI-007, KPI-010, KPI-011, KPI-012, KPI-013) [CAT-02::v1::0].
+- **Customers Table (CAT-08):** Contains one row per identified customer holding loyalty tier, account status, first order date, acquisition channel, and staff/test flags, with linked KPIs (KPI-006, KPI-007, KPI-010, KPI-011, KPI-012, KPI-014) [CAT-08::v1::0].
+
+=== RUN F ===
+[F G-018] Q: How many days do we use to count an Active Customer?
+A: We use a 30-day window to count an Active Customer, and any other window such as 90 days is not certified [KPI-006::v1::0].
+
+[F G-013] Q: Customer churn rate - how is that calculated? What dashboards use it?
+A: Customer Churn Rate is calculated as the percentage of customers in the start base with no purchase for 180 days by the quarter end divided by the customers in the start base, multiplied by 100 [KPI-007::v1::0]. It is used on the Customer 360 Dashboard and the Executive KPI Pack [KPI-007::v1::0].
+
+[F G-002] Q: What KPIs around customer churn which are enabled right now?
+A: The currently enabled KPI around customer churn is Customer Churn Rate (KPI-007) version 2.0, while version 1 (KPI-007-V1) is deprecated and must not be used [KPI-007::v1::0, KPI-007-V1::v1::0].
+
+[F G-017] Q: What is NRR and how is it different from churn?
+A: Net Revenue Retention (NRR) measures how much net revenue Kestrel keeps from an existing group of customers over 12 months, including growth and losses from stopped purchases [KPI-010::v1::0]. In contrast, Customer Churn Rate measures the share of recently active customers who stop buying after 180 days pass without a completed purchase [KPI-007::v1::0].
+
+[F G-001] Q: What are key KPIs and Dashboards serving Customer Domain. Give me strcutured asnwer.
+A: The Customer Domain includes the following certified assets: 
+- **Customer 360 Dashboard (CAT-02)**: A dashboard providing a single view of customer health including activity, churn, retention, lifetime value, repeat buying, and NPS, linked to KPIs KPI-006, KPI-007, KPI-010, KPI-011, KPI-012, and KPI-013 [CAT-02::v1::0].
+- **Customers Table (CAT-08)**: A table holding one row per identified customer containing loyalty tier, account status, first order date, acquisition channel, and staff and test flags, linked to KPIs KPI-006, KPI-007, KPI-010, KPI-011, KPI-012, and KPI-014 [CAT-08::v1::0].
