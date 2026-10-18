@@ -13,6 +13,12 @@ decide what to do, for example retry later.
 """
 
 
+def unknown_citations(citations, retrieved_chunk_ids):
+    """Cited IDs that were not retrieved, in first-seen order, each reported once."""
+    retrieved = set(retrieved_chunk_ids)
+    return [chunk_id for chunk_id in dict.fromkeys(citations) if chunk_id not in retrieved]
+
+
 def validate_citations(citations, refused, retrieved_chunk_ids):
     """Return a list of problem strings. An empty list means the output follows the contract.
 
@@ -21,11 +27,8 @@ def validate_citations(citations, refused, retrieved_chunk_ids):
     Only full chunk IDs are valid (KPI-006::v1::0), never document IDs (KPI-006).
     Duplicate citations are allowed. Each unknown ID is reported once, in first-seen order.
     """
-    problems = []
-    retrieved = set(retrieved_chunk_ids)
-    for chunk_id in dict.fromkeys(citations):
-        if chunk_id not in retrieved:
-            problems.append(f"cited chunk was not retrieved: {chunk_id!r}")
+    problems = [f"cited chunk was not retrieved: {chunk_id!r}"
+                for chunk_id in unknown_citations(citations, retrieved_chunk_ids)]
     if refused and citations:
         problems.append("refused=True but citations were given")
     if not refused and not citations:

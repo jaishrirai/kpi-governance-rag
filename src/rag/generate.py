@@ -59,8 +59,23 @@ def format_context(hits):
     return "\n\n".join(blocks)
 
 
-def build_user_message(question, hits):
-    return f"Question: {question}\n\nContext chunks:\n\n{format_context(hits)}"
+def build_user_message(question, hits, correction=None):
+    message = f"Question: {question}\n\nContext chunks:\n\n{format_context(hits)}"
+    return f"{message}\n\n{correction}" if correction else message
+
+
+def build_correction(invalid_ids, valid_ids, consistency=False):
+    """Retry message: name the rejected IDs and the only IDs the model may cite.
+    consistency=True adds the refused/citations rule, for answers that broke it."""
+    lines = [
+        f"These citation IDs were invalid: [{', '.join(invalid_ids) or 'none'}].",
+        f"You may cite only these retrieved IDs: [{', '.join(valid_ids) or 'none'}].",
+    ]
+    if consistency:
+        lines.append("Your refused flag and citations did not agree. If you cannot answer from the "
+                     "context, set refused to true and give no citations. If you answer, cite at "
+                     "least one retrieved ID.")
+    return "\n".join(lines)
 
 
 _FENCE = re.compile(r"^```(?:json)?\s*|\s*```$", re.IGNORECASE)
@@ -85,11 +100,11 @@ def parse_answer(text):
     return answer, citations, refused
 
 
-def generate(question, hits, complete_fn=llm.complete, prompt_version=PROMPT_VERSION):
+def generate(question, hits, complete_fn=llm.complete, prompt_version=PROMPT_VERSION, correction=None):
     """Answer the question from the hits only. No hits means refuse without calling the model."""
     if not hits:
         return GenerationResult(REFUSAL_MESSAGE, [], True, prompt_version)
-    result = complete_fn(load_prompt(prompt_version), build_user_message(question, hits))
+    result = complete_fn(load_prompt(prompt_version), build_user_message(question, hits, correction))
     answer, citations, refused = parse_answer(result.text)
     return GenerationResult(
         answer=answer,

@@ -94,13 +94,13 @@ Already done before Claude Code: repo skeleton, `requirements.txt`, `.gitignore`
 - [x] LLM smoke test: same question at temperature 0 and 1, print token counts (run ad hoc; `scripts/smoke_test.py` Part B was left as a placeholder)
 - [x] `src/rag/llm.py`, `src/rag/generate.py`, `prompts/answer_v1.txt`
 - [x] JSON shape check (stdlib, not Pydantic), citation check in code (`src/rag/validate.py`), refusal, `results/traces.jsonl`
-- [ ] One retry on a failed citation check, then refuse: NOT built, decision pending (deferred on purpose; see 2.6)
+- [x] One retry on a failed citation check, then refuse: built in 2.6A (see 2.6)
 - [x] `src/rag/pipeline.py` + CLI `python -m rag.ask "..."`
 - [x] Hand test 6 questions, recorded in `results/step2_5_hand_tests.md` (churn definition, active-customer trap, ownership, KPI code, 2 unanswerable). Found: vector missed a KPI asked by code; answers sometimes incomplete
 - Concepts: Grounding, Prompt versioning, Structured output
 
 ### 2.6 Governance in generation + housekeeping (added after Step 2.5, small)
-- [ ] Decide: add the one retry on citation failure (then refuse), yes or no
+- [x] 2.6A: one retry on a failed citation check, then refuse (`ask()`, `generate(correction=...)`, `build_correction()`). Implemented and unit-tested with forced failures only. No real Gemini validation failure has triggered the retry yet (7 real runs, none failed validation); do not treat it as proven on real output
 - [ ] Sort Certified chunks first and add version and effective date (from the manifest) to the context labels; optional flag when an answer cites only non-Certified sources. Simple explicit rules, no governance engine
 - [ ] Housekeeping: push on explicit approval; close the GitHub issues for steps 2.3 to 2.5 (comment with the result)
 

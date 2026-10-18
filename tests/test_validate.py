@@ -70,3 +70,9 @@ def test_inputs_are_not_mutated():
     citations, retrieved = ["KPI-006::v1::0"], list(RETRIEVED)
     validate_citations(citations, False, retrieved)
     assert citations == ["KPI-006::v1::0"] and retrieved == RETRIEVED
+
+
+def test_unknown_citations_lists_only_the_unretrieved_ids_once():
+    from rag.validate import unknown_citations
+    assert unknown_citations(["KPI-006::v1::0", "X::v1::0", "X::v1::0", "KPI-006"], RETRIEVED) == ["X::v1::0", "KPI-006"]
+    assert unknown_citations([], RETRIEVED) == []

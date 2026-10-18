@@ -37,6 +37,8 @@ def main(argv=None, retrieve_fn=None, generate_fn=generate.generate, trace_path=
         print("validation: FAILED")
         for problem in out.problems:
             print(f"  - {problem}")
+    if out.policy_refusal:
+        print("note:      both answers failed the citation check, so the refusal was returned by policy. Rejected answers are in the trace.")
     g = out.generation
     print(f"model={g.model} prompt={g.prompt_version} in={g.input_tokens} out={g.output_tokens} "
           f"thinking={g.thinking_tokens} retrieval={out.retrieval_ms:.0f} ms generation={g.latency_ms:.0f} ms")

@@ -99,3 +99,26 @@ def test_generate_with_no_hits_refuses_without_calling_the_model():
 def test_generate_raises_on_a_malformed_reply():
     with pytest.raises(g.GenerationError):
         g.generate("q", HITS, complete_fn=fake_llm("sorry, I cannot do that"))
+
+
+def test_build_correction_names_rejected_and_allowed_ids_exactly():
+    text = g.build_correction(["KPI-999::v1::0"], ["KPI-006::v1::0", "FAQ-01::v1::0"])
+    assert text == ("These citation IDs were invalid: [KPI-999::v1::0].\n"
+                    "You may cite only these retrieved IDs: [KPI-006::v1::0, FAQ-01::v1::0].")
+
+
+def test_build_correction_says_none_and_adds_the_consistency_rule_when_needed():
+    text = g.build_correction([], ["KPI-006::v1::0"], consistency=True)
+    assert text.startswith("These citation IDs were invalid: [none].")
+    assert "Your refused flag and citations did not agree." in text
+
+
+def test_user_message_has_correction_only_when_given():
+    assert "These citation IDs" not in g.build_user_message("q", HITS)
+    assert g.build_user_message("q", HITS, "CORRECTION").endswith("\n\nCORRECTION")
+
+
+def test_generate_sends_the_correction_to_the_model():
+    calls = []
+    g.generate("q", HITS, complete_fn=fake_llm(GOOD, calls), correction="CORRECTION")
+    assert calls[0][1].endswith("\n\nCORRECTION")
