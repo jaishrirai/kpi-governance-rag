@@ -1012,3 +1012,217 @@ A third dimension, **support** (does the chunk really say what the answer claims
 **Interview line (extended).** "End to end, I retrieve with vector search, generate a cited JSON answer at temperature 0, validate the citations in code, and log a trace of every call. On six hand tests there were no invented facts and both unanswerable questions were refused, but I found two limits: vector search missed a KPI asked by code, and answers were sometimes accurate but incomplete. I recorded both and measure them in the evaluation step instead of patching them by eye."
 
 **Check yourself.** Why did the model refuse the KPI-010 question, and is that a generation failure? Why is `validation: OK` not enough to trust an answer? What would you measure before changing the prompt to be less concise?
+
+## Section 13: Line-by-line walkthrough of `src/rag/pipeline.py`
+
+**Big picture.** `ask(question, retrieve_fn, generate_fn)` is the conductor: retrieve chunks, generate an answer, validate the citations, write a trace. It makes no decisions about the answer. All the real work lives in functions passed in or imported (`index.search`, `generate.generate`, `validate_citations`).
+
+**Lines 1 to 13, the docstring.** A triple-quoted string at the top of a file is the module's documentation. It states the contract: `ask()` is glue only, never edits or retries, and logs one JSON line per call, also on failure.
+
+**Lines 14 to 21, imports.**
+- `json` writes trace lines. `time` measures retrieval time. `dataclass, field` build the result record. `datetime, timezone` make a UTC timestamp. `Path` handles file paths on any operating system.
+- `from rag import generate as gen` imports the generation module under a short name; `from rag.validate import validate_citations` imports one function. Short alias because `generate` is also the name of the function inside it.
+
+**Lines 23 to 26, constants.** `TRACES` is where traces go. `DEFAULT_VARIANT = "v1"` and `DEFAULT_K = 5` are the reference retrieval settings (chunking V1, top 5). `RETRIEVER_NAME` is written into every trace so later runs with other retrievers stay distinguishable. Constants sit at the top so a change happens in one place.
+
+**Lines 29 to 40, `PipelineResult`.**
+- `@dataclass` is a decorator: Python writes the `__init__`, `__repr__` and `==` methods for you from the field list.
+- `question: str` has no default, so it is required. The others have defaults, so `PipelineResult(question=q)` works.
+- `field(default_factory=list)` gives each result its own empty list. Writing `= []` directly would share one list between all results, a classic Python bug.
+- `valid` starts `False`: a result is not valid until validation has run and passed. An error therefore never looks valid by accident.
+- `generation` holds the full `GenerationResult` (tokens, model, latency), `None` on error. `error` is `None` or a message string.
+
+**Lines 43 to 51, `make_retriever`.**
+- It builds the real retriever and returns a function, so the rest of the code never knows about Chroma or embeddings.
+- `import chromadb` and `from rag import index` sit inside the function (lazy import): tests and anything that does not retrieve never need these heavy packages.
+- `client` opens the on-disk Chroma database; `embed` loads the embedding model once (this is the slow part, a few seconds), then both stay alive in the closure.
+- `lambda question: index.search(...)` is a one-line function. It remembers `client`, `embed`, `variant` and `k` from the enclosing function (a closure), so each question only costs the search itself, about 45 ms.
+
+**Lines 54 to 58, `write_trace`.**
+- `Path(path)` accepts a string or a Path. `mkdir(parents=True, exist_ok=True)` creates the `results` folder if missing and does nothing if it exists.
+- `open("a")` is append mode: add to the end, never overwrite earlier traces. `encoding="utf-8"` and `newline="\n"` keep the file identical on Windows and Linux.
+- `with ... as handle` closes the file automatically, even on an error.
+- `json.dumps(record, ensure_ascii=False)` turns the dictionary into one line of JSON and keeps accented characters readable. `+ "\n"` makes it one line per call (the JSON Lines format), which is easy to read, append and parse later.
+
+**Lines 61 to 63, `ask` signature.**
+- `retrieve_fn` is required; `generate_fn` defaults to the real `gen.generate`. Passing functions in (dependency injection) is why 14 tests run with fakes and no network.
+- `trace_path`, `variant` and `k` default to the constants. `variant` and `k` here only label the trace; the actual search settings are fixed inside `make_retriever`. That is a small wart: if they ever disagree the trace would lie. Fine for now, worth fixing when retrieval becomes configurable.
+
+**Lines 64 to 73, set up.**
+- `record` is the dictionary that becomes the trace line. It starts with what is known before any work: UTC timestamp (`timespec="seconds"` trims microseconds), question, settings, prompt version, and `error: None`.
+- `result` is the `PipelineResult` we will fill in and return.
+
+**Lines 75 to 79, `finish()`.** A nested function that every exit path calls. It copies the final `valid`, `problems`, `chunk_ids` and rounded `retrieval_ms` into the record, writes the trace and returns the result. One exit routine means success and failure cannot log differently. It can read `result` and `record` from the outer function because of the closure.
+
+**Lines 81 to 88, retrieval stage.**
+- `time.perf_counter()` is a high-resolution stopwatch. `start` is taken before retrieval.
+- `try: hits = retrieve_fn(question)` runs the search. `except Exception as error` catches any failure. The error text is `retrieval failed: <ExceptionType>: <message>`, stored in both the result and the trace, then `return finish()`. Generation never runs because `return` leaves the function.
+- On success, `result.retrieval_ms` is computed (seconds times 1000), and `chunk_ids` is a list comprehension: one chunk ID per hit, in retrieval order.
+
+**Lines 91 to 95, generation stage.** Same pattern: try the model call, on any exception record `generation failed: ...` and exit through `finish()`. Note `chunk_ids` is already set, so even a failed generation trace shows what was retrieved. This is the part that made the KPI-010 case easy to diagnose.
+
+**Lines 97 to 100, validation.**
+- Copy the answer, citations and refused flag onto the result. The line uses tuple assignment: three values on the right assigned to three names on the left.
+- `validate_citations(...)` returns a list of problems. `result.valid = not result.problems`: an empty list is falsy, so `not []` is `True`.
+- It runs on every generation, including refusals, because the refusal contract (no citations) is also checked. Nothing here edits the answer.
+
+**Lines 101 to 107, final trace.** `record.update(...)` adds the generation details: model, answer, citations, refused, tokens, latency. `return finish()` writes the trace and returns the result.
+
+**Design choices to explain in an interview.**
+1. **Glue only.** No retries and no answer editing. If validation fails you see the real model output plus the reasons, which is what you need to debug and to measure.
+2. **Every path writes a trace, including failures.** A failed call is information too.
+3. **Dependency injection.** Retrieval and generation are passed in, so the pipeline is tested without Gemini or the index.
+4. **Broad `except Exception`.** Good for never losing a trace, but it can also hide a programming bug as an `error` string. The type name is kept in the message to limit that.
+5. **Validation checks form, not truth.** `valid=True` does not mean a correct answer, or even a good retrieval (see the KPI-010 case).
+
+**Check yourself.**
+1. Why is `valid` `False` by default and not `True`?
+2. What would go wrong if `citations: list = []` were used instead of `field(default_factory=list)`?
+3. Why does `finish()` exist instead of writing the trace in each branch?
+4. In the KPI-010 run, which two fields in the trace tell you the failure was retrieval, not generation?
+5. What would you change so `variant` and `k` in the trace can never disagree with the real search?
+
+## Section 14: Pipeline tests review (`tests/test_pipeline.py`)
+
+*Written by the project owner after reviewing the pipeline code. Small additions by Claude are marked "Addition".*
+
+### 1. Purpose of the pipeline tests
+
+`test_pipeline.py` tests the **pipeline orchestration**, not the real retriever or Gemini model.
+
+The pipeline flow is:
+
+**question → retrieval → generation → validation → trace**
+
+The tests use fake retrieval and fake generation so the behavior can be tested deterministically without network calls, the vector index, or Gemini.
+
+### 2. Why use fake retrieval and generation?
+
+The test file defines controlled fake inputs:
+
+- `retrieve()` returns predefined chunks.
+- `fake_generate()` returns a controlled `GenerationResult`.
+
+This lets each test deliberately simulate situations such as:
+
+- correct answer
+- refusal
+- invalid citation
+- citation/refusal mismatch
+- retrieval failure
+- generation failure
+
+The purpose is to test the **pipeline logic**, not retrieval quality or model quality.
+
+### 3. Happy path
+
+The happy-path test checks that:
+
+1. retrieval succeeds
+2. generation returns an answer
+3. citation validation succeeds
+4. the pipeline returns the expected result
+5. a trace is written
+
+The trace is therefore part of the observable pipeline behavior, not just debugging output.
+
+### 4. Citation validation failure
+
+The test deliberately makes the model cite a chunk that was **not retrieved**.
+
+Expected behavior:
+
+- `valid = False`
+- the original answer is preserved
+- the invalid citation is preserved
+- the problem is recorded
+- the trace records the failure
+
+Important design principle:
+
+> **Validation detects a problem; it does not silently rewrite the model's answer.**
+
+This keeps the system auditable.
+
+### 5. Refusal/citation consistency
+
+A response with `refused = True` plus citations is considered invalid. This tests the consistency rule established by the citation validator.
+
+### 6. Error handling
+
+**Retrieval failure.** If retrieval fails: generation must not run, the retrieval error is returned, and the error is written to the trace. This prevents the system from generating an answer without successful retrieval.
+
+**Generation failure.** If generation fails: no answer is returned, the generation error is recorded, and retrieved chunks remain available in the trace. This preserves the distinction between *retrieval succeeded, generation failed*.
+
+### 7. Retrieved context is passed unchanged
+
+One test checks that the exact retrieved hits are passed into generation unchanged. This protects the boundary between retrieval and generation and ensures the pipeline itself is not accidentally modifying the evidence before generation.
+
+### 8. Tracing
+
+The tests verify that traces are appended, the results directory can be created, multiple calls produce multiple records, and non-ASCII text remains readable. The trace therefore acts as an **execution record** for the pipeline.
+
+### 9. Empty retrieval
+
+An empty retrieval result is treated as a **valid refusal**, not a system error.
+
+> **No evidence → do not answer.**
+
+*Addition:* this test uses the real `generate()` with an empty hit list, not the fake. The refusal comes from `generate()` returning the refusal sentence without calling Gemini, and the pipeline then validates it like any other result (refused, no citations, valid).
+
+### 10. CLI responsibilities
+
+| Situation | Exit code |
+|---|---:|
+| Valid answer | `0` |
+| Answer but citation validation failed | `2` |
+| System error | `1` |
+
+The CLI also prints the retrieved chunks, answer, and validation result.
+
+> **Pipeline determines what happened; CLI determines how that result is communicated to the user and the shell.**
+
+### What this file does NOT prove
+
+These tests do **not** prove that:
+
+- vector retrieval finds the right documents
+- Gemini generates correct answers
+- citations actually support claims
+- governance reasoning is correct
+- the model reliably refuses unanswerable questions
+
+Those require retrieval evaluation, real Gemini runs, hand grading, and later end-to-end evaluation.
+
+*Addition, a real example of this gap:* the KPI-010 hand test printed `validation: OK` on a refusal caused by a retrieval miss. No unit test here could catch that, because the fake retriever always returns sensible chunks. It was found only by a real run, and it is a retrieval issue, so it belongs to the retrieval evaluation (and a future bare-KPI-code diagnostic).
+
+### Key interview takeaway
+
+**"Why don't your pipeline tests call Gemini?"**
+
+> "Because these are unit tests for pipeline orchestration. I want deterministic tests of retrieval-to-generation handoff, validation, error handling, and tracing without network calls or model variability. Real Gemini behavior is tested separately through end-to-end and hand tests."
+
+### Most important distinction
+
+**Unit test:** does the pipeline correctly handle the inputs it receives?
+
+**Retrieval evaluation:** did retrieval find the right evidence?
+
+**Generation evaluation:** did the model produce a correct, grounded answer from that evidence?
+
+**End-to-end evaluation:** does the complete RAG system answer the question correctly and safely?
+
+Keeping these layers separate is important for diagnosing failures.
+
+*Addition, where each layer lives in this project:*
+
+| Layer | Where | Status |
+|---|---|---|
+| Unit tests | `tests/` (159 passing, 2 skipped in the cloud shell) | Done |
+| Retrieval evaluation | `eval/retrieval_eval.py`, `results/runs.csv` (runs 1 to 22) | Done |
+| Generation evaluation | `eval/generation_eval.py` (Step 3.1) | Next |
+| End-to-end and hand tests | `results/step2_5_hand_tests.md`, `results/traces.jsonl` | 6 hand tests done; full dev run in Step 3.1 |
+
+*Addition, diagnosing a bad answer:* check in this order. (1) Was the right chunk retrieved? (`chunk_ids` in the trace.) (2) Did the model use it correctly? (3) Was the output well formed? (`valid` and `problems`.) The KPI-010 case failed at step 1; the incomplete CLV answer passed step 1 and failed at step 2.
+
+**Check yourself.** Which of the four layers would catch a vector search that misses a KPI asked by code? Which layer would catch an answer that cites a real chunk but misreads it? Why can the pipeline unit tests never catch either?

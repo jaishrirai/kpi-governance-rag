@@ -65,3 +65,59 @@ AWS AIF-C01 domain: 3 (Applications of Foundation Models, RAG data preparation)
 4. Industry name: secrets management (AWS Secrets Manager, Parameter Store).
 5. Interview line: "If a key leaks, revoke it first, then clean history; deleting the file is not enough."
 AWS AIF-C01 domain: 5 (Security, Compliance, and Governance)
+
+## Chunking (Step 1.4)
+1. What it is: cutting each document into pieces small enough to embed and retrieve. Too big and the match gets blurry or cut off; too small and a piece loses its context.
+2. Example from P1: V1 cuts about 400 tokens (52 chunks), V2 cuts by heading (265 chunks), V3 keeps one chunk per document (52). Every chunk starts with `{title} ({doc_id}) | {section}` so the document code is inside the text.
+3. Why it matters: V2 chunks of KPI-014 never contained "KPI-014", so neither BM25 nor the embedding could find the file by its code. Chunking changes what can be found.
+4. Industry name: chunking strategy, document segmentation, chunk metadata.
+5. Interview line: "I compared three chunkings on a golden set, and I put the document ID in every chunk header after a miss showed codes were missing."
+AWS AIF-C01 domain: 3 (Applications of Foundation Models, RAG data preparation)
+
+## Vector search + Chroma + metadata (Step 1.5)
+1. What it is: each chunk becomes a vector (384 numbers) with `bge-small-en-v1.5`; a question becomes a vector too, and the closest chunks by cosine similarity are returned. Chroma stores the vectors on disk with metadata.
+2. Example from P1: "how is churn calculated" finds the KPI-007 chunk by meaning, even without the exact words. Metadata (domain, certification) can filter results.
+3. Why it matters: meaning-based search is the base of the system, but it can miss exact codes (KPI-010 asked by code returned SOPs).
+4. Industry name: dense retrieval, embeddings, vector database, metadata filtering (OpenSearch, Pinecone, Bedrock Knowledge Bases).
+5. Interview line: "Vector search finds meaning, not exact tokens, so I measured where it fails instead of assuming."
+AWS AIF-C01 domain: 2 (Fundamentals of Generative AI, embeddings), 3 (RAG)
+
+## Keyword search, BM25 (Step 1.6)
+1. What it is: ranks chunks by how often and how rarely the question's words appear in them. Rare words (like KPI-014) count for more.
+2. Example from P1: a tokenizer that keeps hyphenated IDs lets "KPI-014" match the right file. BM25 recall on the golden set (0.59 to 0.64) is below vector (0.81), but it is strong on exact codes.
+3. Why it matters: it covers what embeddings blur (codes, names), but it also rewards chatty text such as the informal FAQ.
+4. Industry name: lexical or sparse retrieval, TF-IDF, BM25 (OpenSearch).
+5. Interview line: "BM25 handles exact IDs; on my golden set it was the weaker ranker overall, which is why equal-weight fusion hurt."
+AWS AIF-C01 domain: 3 (Applications of Foundation Models)
+
+## Retrieval metrics and a golden set (Steps 2.1 and 2.2)
+1. What it is: a fixed list of questions with the expected documents, scored by recall@5 (share of expected documents found in the top 5), hit@5 (at least one found) and MRR@10 (how high the first expected one ranks). Dev questions drive decisions; holdout is run once.
+2. Example from P1: V1 + vector scores dev 0.815 / 1.000 / 0.938 and holdout 0.729 / 0.875 / 0.646. Holdout has only 8 answerable questions, so one question moves recall by about 0.125.
+3. Why it matters: it turns "it feels better" into numbers, and the sample size tells you how much to trust a change.
+4. Industry name: offline evaluation, golden dataset, recall@k, MRR, held-out set.
+5. Interview line: "I compared every change on the same questions, did not tune on holdout, and said 'promising, not proven' when the sample was small."
+AWS AIF-C01 domain: 3 (Evaluating foundation model applications)
+
+## Hybrid search + Reciprocal Rank Fusion (Step 2.3)
+1. What it is: run vector and BM25 search, then merge the two rankings with RRF: each chunk scores the sum of 1/(60 + rank) over the lists it appears in.
+2. Example from P1: rank 1 in vector and rank 4 in BM25 scores 1/61 + 1/64. Equal-weight RRF lost to vector on dev for all three chunkings, because the weaker BM25 pulled FAQ-01 into the top 5 (16 of 24 dev questions, against 7 for vector).
+3. Why it matters: fusion is not free. If one ranker is weaker, an equal vote lets its mistakes in.
+4. Industry name: hybrid retrieval, rank fusion, RRF (OpenSearch hybrid search).
+5. Interview line: "Hybrid did not help on my corpus. I kept vector as the default and documented why, instead of tuning weights on 24 questions."
+AWS AIF-C01 domain: 3 (Applications of Foundation Models, RAG)
+
+## Reranking, cross-encoder (Step 2.4)
+1. What it is: a second model that reads the question and one chunk together and gives a relevance score. More precise than comparing separate vectors, but it must run once per candidate.
+2. Example from P1: reranking the vector top 50 gave a mixed dev result (recall +0.010, MRR -0.028) and a better holdout on 8 questions, at about 50 times the latency. It also ranked the informal FAQ-01 higher.
+3. Why it matters: it only reorders what retrieval found, and it sees text only, so it cannot tell a certified source from a provisional one.
+4. Industry name: reranker, cross-encoder, retrieve wide and rerank narrow (Cohere Rerank, Bedrock rerank).
+5. Interview line: "Reranking improved some questions and hurt others; relevance is not authority, so I handled governance in generation."
+AWS AIF-C01 domain: 3 (Applications of Foundation Models)
+
+## Grounded generation, citations and refusal (Step 2.5)
+1. What it is: the model answers only from retrieved chunks, returns structured JSON with citations and a refused flag, and code checks that every citation is a chunk that was actually retrieved.
+2. Example from P1: asked about KPI-010 with no documents, Gemini gave a fluent but wrong definition. With context it answers from the chunk, and for "who is the CEO" it refuses with an exact sentence. When KPI-010 was not retrieved, it refused instead of inventing.
+3. Why it matters: a valid citation proves a chunk was in the context, not that it supports the claim. Support is judged separately, and retrieval failures can still look like a clean refusal.
+4. Industry name: grounding, RAG with citations, structured output, abstention, trace logging.
+5. Interview line: "I validate citations in code and log a trace of every call, and I know that does not prove correctness, so I evaluate support separately."
+AWS AIF-C01 domain: 2 (Fundamentals of Generative AI, hallucination), 4 (Responsible AI, transparency), 5 (Governance)

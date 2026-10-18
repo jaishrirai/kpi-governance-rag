@@ -44,3 +44,30 @@
 
 **Where we stopped**
 - Step 1.3 code is written and run. Waiting on my answer to the 1 question, then the day-end wrap-up (CONCEPTS.md notes, commit). Next is Step 1.4 (chunking).
+
+## 2026-10-13 to 2026-10-16: Steps 1.4 to 2.5 (chunking to grounded answers)
+
+**What we did**
+- 1.4 to 1.6: three chunkings (V1 52 chunks, V2 265, V3 52), Chroma index with `bge-small-en-v1.5`, BM25 with a code-preserving tokenizer. Found and fixed: the document code was missing from V2 chunks, so a chunk header `{title} ({doc_id}) | {section}` was added (decision 8) and owner, status and version were appended to every document (decision 9).
+- Golden set: 40 questions: 30 dev (24 answerable, 6 unanswerable), 10 holdout (8 answerable, 2 unanswerable). Audited, labels v2.
+- 2.2 retrieval eval: recall@5 (fractional, headline), hit@5, MRR@10 at document level; baseline runs 1 to 14 (runs 1 and 2 dirty, repeated clean as runs 3 and 4). V1 + vector: dev 0.815 / 1.000 / 0.938.
+- 2.3 hybrid (RRF k=60): lost to vector on dev for V1, V2 and V3. 2.4 cross-encoder rerank: dev mixed, holdout better on 8 questions, about 50x slower. Retrieval phase closed; vector V1 is the default, hybrid and rerank are optional (decisions 10 to 12).
+- 2.5 grounded generation: `llm.py`, `generate.py`, `prompts/answer_v1.txt`, `validate.py` (my own pseudo-logic matched the final design: provenance and consistency), `pipeline.py`, `python -m rag.ask`, `results/traces.jsonl`. Six hand tests recorded in `results/step2_5_hand_tests.md`.
+
+**What I learned or decided**
+- Fusion can hurt when one ranker is weaker; a small test set limits the claim; relevance is not authority (a text-only reranker promoted the informal FAQ).
+- Ungrounded Gemini answered KPI-010 fluently and wrongly; with retrieved context and a refusal rule it either answered from the chunk or refused.
+- Findings carried to Step 3.1: vector search missed KPI-010 when asked by code; answers are accurate but sometimes drop key facts. Not patched; to be measured first.
+- Process: predict before running, log runs on a clean commit, never tune on holdout.
+
+**Where we stopped**
+- The Step 2.3 to 2.5 commits are local and not pushed. Pending decisions: the one retry on citation failure, and the Step 2.6 governance step. Then Step 3.1.
+
+## 2026-10-18: Wrap-up housekeeping
+
+**What we did**
+- Added `LEARNING_NOTES.md` Section 13 (line-by-line walkthrough of `pipeline.py`) and Section 14 (my review of the pipeline tests, with small additions).
+- Brought `PLAN.md`, `decisions.md` (10 to 18), this log and `CONCEPTS.md` up to date through Step 2.5.
+
+**Where we stopped**
+- Review the diff, then commit locally. Push only when I ask. Next: decide the retry, Step 2.6, then Step 3.1.

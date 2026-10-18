@@ -65,8 +65,8 @@ Already done before Claude Code: repo skeleton, `requirements.txt`, `.gitignore`
 - Concepts: Keyword search, BM25, TF-IDF intuition
 
 ### 2.1 Golden set, part 2 (0:30, runs at the end of Day 1)
-- [ ] Claude drafts 30 (traps, unanswerables, codes, typos, abbreviations); I review
-- [ ] Validation script: 40 total, 8 unanswerable, 10 holdout, every expected doc_id exists
+- [x] Claude drafts 30 (traps, unanswerables, codes, typos, abbreviations); I review (40 questions, labels v2 after the audit)
+- [x] Validation script: 40 total, 8 unanswerable, 10 holdout, every expected doc_id exists (`scripts/validate_golden.py`)
 
 **Day 1 wrap-up:** batched CONCEPTS.md notes for the day, approved by me, then commits.
 
@@ -75,34 +75,41 @@ Already done before Claude Code: repo skeleton, `requirements.txt`, `.gitignore`
 ## Day 2: Retrieval grid, grounded answers, eval, demo, ship (about 6h20)
 
 ### 2.2 Retrieval eval (Very High) [YOU BUILD: metrics] (0:50)
-- [ ] `eval/retrieval_eval.py`: recall@5 (fractional, headline), hit@5 (binary), MRR@10 at document level, dev vs holdout, appended to `results/runs.csv`
-- [ ] Work out MRR by hand for ranks 1, 3, missing, 2 before coding
-- [ ] Baseline: V1 + vector
+- [x] `eval/retrieval_eval.py`: recall@5 (fractional, headline), hit@5 (binary), MRR@10 at document level, dev vs holdout, appended to `results/runs.csv`
+- [x] Work out MRR by hand for ranks 1, 3, missing, 2 before coding
+- [x] Baseline: V1 + vector (baseline grid is runs 1 to 14 in `results/runs.csv`; runs 1 and 2 were logged on a dirty tree, runs 3 and 4 repeat them on a clean commit, 3258ca8)
 
 ### 2.3 Hybrid RRF (Very High) [YOU BUILD] (1:20)
-- [ ] Work one RRF example by hand (rank 1 vector + rank 4 BM25 = 1/61 + 1/64)
-- [ ] `rrf()` + `hybrid_search()` + filter tests
-- [ ] Grid: 3 variants x {vector, BM25, hybrid}, runs 1-9
-- [ ] Error analysis of the 3 worst misses in `results/experiments.md`
+- [x] Work one RRF example by hand (rank 1 vector + rank 4 BM25 = 1/61 + 1/64); three worked examples in `docs/LEARNING_NOTES.md` 7.7
+- [x] `rrf()` + `hybrid_search()` with tests (the `where` filter is passed through and tested with fakes; no filtered queries are in the evaluation)
+- [x] Grid: 3 variants x {vector, BM25, hybrid}: baseline runs 1 to 14 (runs 1 and 2 dirty, repeated clean as runs 3 and 4), hybrid runs 15 to 20 (15 to 17 logged on a dirty tree, kept; reruns are 18 to 20). Result: equal-weight RRF lost to vector on dev
+- [x] Error analysis in `results/experiments.md` (Step 2.2 miss review, Step 2.3 hybrid diagnostics, conclusions)
 
 ### 2.4 Reranker (Very High) [YOU BUILD] (0:40)
-- [ ] `rerank()` with the cross-encoder; runs 10-11 on the best 2 configs; log the added latency
+- [x] `rerank()` with the cross-encoder; run on V1 + vector only (the best config), runs 21 and 22 (21 dirty, 22 clean rerun); added latency logged (about 50x). Result: dev mixed, holdout up on 8 questions, optional
 - Concepts: Bi-encoder vs cross-encoder, "retrieve wide, rerank narrow"
 
 ### 2.5 Grounded generation (High) [YOU BUILD: citation check] (1:10)
-- [ ] `GEMINI_API_KEY`, `LLM_MODEL`, `JUDGE_MODEL` in `.env`, `pip install google-genai`
-- [ ] LLM smoke test: same question at temperature 0 and 1, print token counts
-- [ ] `src/rag/llm.py`, `src/rag/generate.py`, `prompts/answer_v1.txt`
-- [ ] Pydantic validation, citation check in code, one retry, refusal, `results/traces.jsonl`
-- [ ] `src/rag/pipeline.py` + CLI `python -m rag.ask "..."`
-- [ ] Hand test 6 questions: 2 definitions, 1 KPI code, Churn trap, 2 unanswerable (test new LLM code on 3 first)
+- [x] `GEMINI_API_KEY`, `LLM_MODEL`, `JUDGE_MODEL` in `.env`, `pip install google-genai` (models: gemini-3.5-flash-lite for answers, gemini-3.8-flash for the judge; judge gave a 503 once, retest in 3.1)
+- [x] LLM smoke test: same question at temperature 0 and 1, print token counts (run ad hoc; `scripts/smoke_test.py` Part B was left as a placeholder)
+- [x] `src/rag/llm.py`, `src/rag/generate.py`, `prompts/answer_v1.txt`
+- [x] JSON shape check (stdlib, not Pydantic), citation check in code (`src/rag/validate.py`), refusal, `results/traces.jsonl`
+- [ ] One retry on a failed citation check, then refuse: NOT built, decision pending (deferred on purpose; see 2.6)
+- [x] `src/rag/pipeline.py` + CLI `python -m rag.ask "..."`
+- [x] Hand test 6 questions, recorded in `results/step2_5_hand_tests.md` (churn definition, active-customer trap, ownership, KPI code, 2 unanswerable). Found: vector missed a KPI asked by code; answers sometimes incomplete
 - Concepts: Grounding, Prompt versioning, Structured output
+
+### 2.6 Governance in generation + housekeeping (added after Step 2.5, small)
+- [ ] Decide: add the one retry on citation failure (then refuse), yes or no
+- [ ] Sort Certified chunks first and add version and effective date (from the manifest) to the context labels; optional flag when an answer cites only non-Certified sources. Simple explicit rules, no governance engine
+- [ ] Housekeeping: push on explicit approval; close the GitHub issues for steps 2.3 to 2.5 (comment with the result)
 
 ### 3.1 Generation eval (Very High) (0:50)
 - [ ] `eval/generation_eval.py` + judge prompts (correctness, faithfulness); test on 3 questions first
 - [ ] Full run on 20 questions (10 holdout, 4+ unanswerable, both traps): best config vs baseline
 - [ ] Run the judge in the background; I hand-grade 10 answers **before** reading the judge; compute agreement
 - [ ] Cost per query (note price and date used), p50 / p95 latency
+- [ ] Measure the two Step 2.5 findings first: key-fact coverage of answers (prompt rule 5 hypothesis) and vector retrieval of bare KPI codes. Dev only; no changes tuned on holdout
 
 ### 3.3 Streamlit demo (0:50)
 - [ ] `app/streamlit_app.py`: question box, filters, config picker, **Retrieval Inspector** table (vector rank, BM25 rank, RRF score, rerank score), answer with clickable citations, tokens and latency. Calls the pipeline directly (no API).
