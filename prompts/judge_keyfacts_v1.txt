@@ -1,0 +1,12 @@
+You are checking whether an answer states specific key facts. You are given a question, an answer, and a numbered list of key facts.
+
+For each key fact, decide whether the answer clearly states it.
+
+Rules:
+1. covered is true only if the answer clearly states the fact. A paraphrase counts if the meaning is the same.
+2. Do not give credit for a fact that is only implied or hinted at.
+3. Ignore extra facts in the answer that are not on the list. Ignore style, length, formatting and typos.
+4. Judge only the text of the answer. Do not use outside knowledge, and do not judge whether the fact is true.
+
+Respond with a single JSON object and nothing else, with one entry per key fact, in the same order:
+{"facts": [{"fact": "<the key fact>", "covered": <true or false>}]}

@@ -98,3 +98,41 @@ def test_missing_api_key_raises_without_printing_it(monkeypatch):
     monkeypatch.setattr(llm, "_load_env", lambda: None)
     with pytest.raises(llm.LLMError, match="GEMINI_API_KEY"):
         llm.make_client()
+
+
+class ConnectError(Exception):
+    """Same class name as httpx.ConnectError, and like it, no .code attribute."""
+
+
+class RemoteProtocolError(Exception):
+    """Same class name as httpx.RemoteProtocolError."""
+
+
+def test_retries_connection_errors_then_succeeds():
+    client = FakeClient([ConnectError("getaddrinfo failed"), RemoteProtocolError("disconnected"), fake_response("ok")])
+    result = llm.complete("s", "u", model="m1", client=client, sleep=no_sleep)
+    assert result.text == "ok" and len(client.calls) == 3
+
+
+def test_connection_errors_give_up_after_the_retry_limit():
+    client = FakeClient([ConnectError("down")] * 3)
+    with pytest.raises(ConnectError):
+        llm.complete("s", "u", model="m1", client=client, sleep=no_sleep, retries=2)
+    assert len(client.calls) == 3
+
+
+def test_builtin_connection_and_timeout_errors_are_retried():
+    client = FakeClient([ConnectionResetError("reset"), TimeoutError("slow"), fake_response("ok")])
+    assert llm.complete("s", "u", model="m1", client=client, sleep=no_sleep).text == "ok"
+
+
+def test_other_errors_without_a_code_are_not_retried():
+    client = FakeClient([ValueError("bad request shape"), fake_response()])
+    with pytest.raises(ValueError):
+        llm.complete("s", "u", model="m1", client=client, sleep=no_sleep)
+    assert len(client.calls) == 1
+
+
+def test_is_transient_matches_codes_and_connection_names():
+    assert llm.is_transient(FakeError(503)) and llm.is_transient(ConnectError("x"))
+    assert not llm.is_transient(FakeError(400)) and not llm.is_transient(ValueError("x"))

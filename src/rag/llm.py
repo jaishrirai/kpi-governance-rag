@@ -17,6 +17,13 @@ from dataclasses import dataclass
 DEFAULT_MAX_OUTPUT_TOKENS = 800
 # HTTP codes worth retrying: rate limit, server error, overloaded (the 503 seen in the smoke test).
 TRANSIENT_CODES = (429, 500, 503)
+# Connection-level failures (DNS lookup failed, server dropped the connection, timeout) carry no HTTP code,
+# so they are recognised by class name. Matching by name keeps httpx, used inside the Gemini SDK, out of
+# the imports here.
+CONNECTION_ERROR_NAMES = frozenset({
+    "ConnectError", "ConnectTimeout", "ReadTimeout", "WriteTimeout", "PoolTimeout", "TimeoutException",
+    "RemoteProtocolError", "ReadError", "WriteError", "NetworkError",
+})
 
 
 class LLMError(RuntimeError):
@@ -31,6 +38,15 @@ class LLMResult:
     output_tokens: int  # visible answer tokens
     thinking_tokens: int  # hidden reasoning tokens, billed as output
     latency_ms: float
+
+
+def is_transient(error):
+    """True for errors worth a retry: HTTP 429, 500 or 503, or a dropped or unreachable connection."""
+    if getattr(error, "code", None) in TRANSIENT_CODES:
+        return True
+    if isinstance(error, (ConnectionError, TimeoutError)):
+        return True
+    return any(cls.__name__ in CONNECTION_ERROR_NAMES for cls in type(error).__mro__)
 
 
 def _load_env():
@@ -59,7 +75,8 @@ def complete(system, user, *, temperature=0.0, max_output_tokens=DEFAULT_MAX_OUT
     system: instructions (the versioned prompt). user: the question plus context.
     temperature 0 keeps governance answers repeatable. json_output asks Gemini for JSON only.
     client and sleep are injectable so tests run with no network and no waiting.
-    Retries only transient errors (429, 500, 503) with a short backoff; anything else is raised.
+    Retries only transient errors (429, 500, 503, or a dropped or unreachable connection) with a short
+    backoff; anything else is raised.
     """
     if model is None:
         _load_env()
@@ -82,8 +99,7 @@ def complete(system, user, *, temperature=0.0, max_output_tokens=DEFAULT_MAX_OUT
             response = client.models.generate_content(model=model, contents=user, config=config)
             break
         except Exception as error:  # the SDK raises its own APIError with a .code
-            transient = getattr(error, "code", None) in TRANSIENT_CODES
-            if transient and attempt < retries:
+            if is_transient(error) and attempt < retries:
                 sleep(2 * (attempt + 1))
                 continue
             raise

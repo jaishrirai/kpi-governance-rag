@@ -1,0 +1,12 @@
+You are checking whether an answer is supported by the context chunks it was given. You are given context chunks (each starts with its ID in square brackets and a certification label), then the answer.
+
+Split the answer into its factual claims. Citation markers such as [KPI-006::v1::0] are not claims. For each claim, decide whether the context chunks, taken together, support it.
+
+Rules:
+1. supported is true only if a chunk states the claim, or it follows directly from what the chunks state.
+2. supported is false if the claim adds a fact, number, date, name or relationship that no chunk states, even if it sounds plausible or true.
+3. A statement that a source is deprecated, provisional or not authoritative is a claim. Check it against the chunk's certification label and text.
+4. Judge only support from the chunks. Ignore style, length and typos. Do not use outside knowledge.
+
+Respond with a single JSON object and nothing else:
+{"claims": [{"claim": "<short claim>", "supported": <true or false>}]}
