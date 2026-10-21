@@ -105,11 +105,11 @@ Already done before Claude Code: repo skeleton, `requirements.txt`, `.gitignore`
 - [ ] Housekeeping: push on explicit approval; close the GitHub issues for steps 2.3 to 2.5 (comment with the result)
 
 ### 3.1 Generation eval (Very High) (0:50)
-- [ ] `eval/generation_eval.py` + judge prompts (correctness, faithfulness); test on 3 questions first
-- [ ] Full run on 20 questions (10 holdout, 4+ unanswerable, both traps): best config vs baseline
-- [ ] Run the judge in the background; I hand-grade 10 answers **before** reading the judge; compute agreement
-- [ ] Cost per query (note price and date used), p50 / p95 latency
-- [ ] Measure the two Step 2.5 findings first: key-fact coverage of answers (prompt rule 5 hypothesis) and vector retrieval of bare KPI codes. Dev only; no changes tuned on holdout
+- [x] `eval/generation_eval.py` + judge prompts (key-fact coverage, faithfulness); tested on 3 questions first, then judge sanity check (9 of 9)
+- [x] Full run on all 40 questions (30 dev, 10 holdout once per version): `answer_v1` vs `answer_v2`. Result: v2 is not adopted, v1 stays the default (`docs/decisions.md` rows 20 to 22)
+- [x] Judge run with `gemini-3.5-flash-lite` (free tier); I hand-graded 10 answers blind before reading the judge; agreement 80.6% then 100% after a logged G-005 rubric fix, faithfulness 10 of 10
+- [x] Cost per query about $0.0008 (input $0.30 and output $2.50 per 1M tokens, third-party price page updated 2026-10-19, recheck before quoting; the runs themselves were free tier). Latency p50 / p95 from dev: v1 4.6 s / 8.4 s, v2 4.0 s / 6.4 s; holdout latency is unusable (free-tier outliers up to 282 s)
+- [ ] Key-fact coverage of answers is measured (2.6B and 3.1). Vector retrieval of bare KPI codes is NOT run as a separate diagnostic; it stays a documented limit (G-028 is one real example: the KPI-020 owner chunk was not retrieved)
 
 ### 3.3 Streamlit demo (0:50)
 - [ ] `app/streamlit_app.py`: question box, filters, config picker, **Retrieval Inspector** table (vector rank, BM25 rank, RRF score, rerank score), answer with clickable citations, tokens and latency. Calls the pipeline directly (no API).

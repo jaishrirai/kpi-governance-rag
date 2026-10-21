@@ -1226,3 +1226,117 @@ Keeping these layers separate is important for diagnosing failures.
 *Addition, diagnosing a bad answer:* check in this order. (1) Was the right chunk retrieved? (`chunk_ids` in the trace.) (2) Did the model use it correctly? (3) Was the output well formed? (`valid` and `problems`.) The KPI-010 case failed at step 1; the incomplete CLV answer passed step 1 and failed at step 2.
 
 **Check yourself.** Which of the four layers would catch a vector search that misses a KPI asked by code? Which layer would catch an answer that cites a real chunk but misreads it? Why can the pipeline unit tests never catch either?
+
+---
+
+## Section 15: Steps 2.6 and 3.1 (retry, completeness experiment, judge validation)
+
+### 1. Retries (2.6A)
+
+- Retry only when a second try can plausibly fix the problem. A bad citation ID can be fixed by telling the model which IDs are valid. A missing fact or a wrong retrieval cannot, so those are never retried.
+- The retry message should say what was wrong. Naming the rejected and the valid IDs works better than "try again".
+- The retry is tested with forced failures. No real Gemini failure has triggered it yet, so we do not claim it works in real life.
+
+### 2. Prompt experiments (2.6B)
+
+- Change one thing at a time. `answer_v2` is `answer_v1` plus one rule, so any difference comes from that rule.
+- One run is not evidence. A model can vary even at temperature 0, so each version was run 3 times and re-scored blind.
+- Fix the scoring rule before looking at results. Changing it afterwards means you are tuning to the answer.
+
+### 3. LLM as judge
+
+- A judge is a model grading a model. It is only trustworthy once it has been checked against a human.
+- Judge small, clear questions. One yes or no per key fact is easier to check than "rate this answer".
+- Faithfulness (is every claim supported by the chunks) is separate from correctness. A claim from an informal FAQ can be supported but not authoritative, and the judge checks only support.
+- The judge and the answer model are the same model here (`gemini-3.5-flash-lite`). That can make the judge favour its own style, which is why the human check matters.
+
+### 4. Validating the judge
+
+- Sanity check first: plant known failures (an invented dashboard, a wrong owner, an invented number) and good answers, then confirm the judge catches the first group and passes the second. Result: 9 of 9.
+- Then blind hand-grade a sample and compare. Set the pass bar before seeing any number (85% on key facts, 8 of 10 on faithfulness).
+- Do not open the judge's output, the report or the mapping before you finish grading, or your grades are no longer independent.
+
+### 5. A rubric can be the bug
+
+- The first agreement was 80.6%, below the bar. All 6 misses were one answer (G-005). The key facts said "Head of Finance Analytics", the question asked for teams, and the judge was literal.
+- Write key facts at the level the question asks for. Over-specific wording penalises answers that are correct.
+- The wording hit one version and not the other (v1 wrote team names, v2 repeated "Head of"), so it would have skewed the v1 versus v2 comparison. A rubric flaw can silently pick the winner.
+- After the fix (key facts changed to team names, G-005 rejudged for both versions only), agreement was 100% with kappa 1.0. Both numbers are logged, because a fix made after seeing results must be disclosed. The bar and the human grades were not changed.
+- Limits: 10 answers, and only 2 of 31 human grades were n, so leniency is weakly tested.
+
+### 6. Reading results honestly
+
+| Dev result | v1 | v2 |
+|---|---|---|
+| Key-fact coverage | 59 of 78 (75.6%) | 62 of 78 (79.5%) |
+| Answers with every fact | 16 of 24 | 18 of 24 |
+| Faithful, unsupported claims | 100%, 0 | 100%, 0 |
+| Output tokens (mean) | 103 | 116 |
+
+- Looking per question showed that only 2 answers differ (G-017 and G-027) and v2 wins both. Nothing got worse.
+- A small margin is a direction, not proof. G-017 was one of the five questions v2 was designed around, so only G-027 is independent evidence.
+- Latency differences can be free-tier load noise. Do not credit the prompt for them.
+- Some misses are not prompt problems. Two broad list questions (G-006, G-015) are wrongly refused by both versions because retrieval finds only some of the documents. That is a retrieval recall limit and belongs in the write-up.
+- Four single-fact misses (a date, "loyalty tier", "Do not use for reporting", "Status: Provisional") were not fixed by the completeness rule in either version.
+
+### 7. Holdout discipline
+
+- The holdout is for one final check, run once per version, after everything is frozen.
+- Write the pass rule before the run. Ours: v2 generalizes if coverage is at least v1's, faithfulness is not lower, there are no new wrong refusals and no unsupported claims.
+- Scan the holdout questions for rubric problems before any answer exists. Edits after seeing results are not allowed.
+- Known weak spots in the locked holdout rubric are listed as limits, not quietly fixed: G-004 (terse facts), G-028 (compound facts), G-032 (a vague second fact).
+- With 8 answerable holdout questions, the holdout can confirm or contradict the dev direction, but it cannot prove it.
+
+### 8. Working on a free tier
+
+- Free models have per-minute and per-day limits. Plan the number of calls (about 130 to 150 judge calls here), not just the model quality. Flash-lite allows 500 a day and 15 a minute; the two stronger Flash models allow 20 a day.
+- Retrying a per-day limit is pointless, so the tool stops and prints when it resets. Judging is resumable and keeps finished records. `--pause` spaces calls for per-minute limits and `--judge-model` picks the judge.
+- Switching judge model means rejudging everything, so one comparison never mixes judges.
+- A dropped connection and a daily quota are different errors. The first is worth a short retry, the second is not.
+
+### 9. Engineering habits worth keeping
+
+- Pass the model calls into functions so tests run with fakes and no network.
+- Commit small and local, show the diff first, and push only on explicit approval.
+- Keep a log of decisions with the evidence, including the result that missed the bar (`docs/decisions.md` rows 19 to 21).
+
+### 10. Holdout result (run once per version)
+
+| Holdout (8 answerable, 2 unanswerable) | v1 | v2 |
+|---|---|---|
+| Key-fact coverage | 60.9% (14 of 23) | 65.2% (15 of 23) |
+| Answers with every fact | 37.5% | 50.0% |
+| Faithful answers | 100% | 87.5% |
+| Unsupported claims | 0 | 1 |
+| Wrong refusals, correct refusals | 0, 100% | 0, 100% |
+
+- The pass rule was applied exactly as written: coverage passed, but faithfulness and the unsupported-claim condition failed. So v2 is not adopted and `answer_v1` stays the default.
+- The unsupported claim was real. The question asked who owns KPI-020. The retrieved chunks never said, because the glossary chunk was missed. The only "Owner: Head of Digital Product" in the context belonged to an action. v1 said the owner was not stated. v2 turned the action owner into the KPI owner and cited it. The answer happens to be true, but it was not supported by what the model was given.
+- Why it matters: a completeness rule can push a model to fill gaps by inference. In a governance setting, an honest "not stated" is better than a true-looking guess.
+- Read the claim yourself before trusting the judge. Here the judge was right.
+- Small samples cut both ways. The coverage gain (+1 fact on holdout, +3 on dev) is real but small, and one flagged claim on 8 questions is not proof of a rate. We report it as a trade-off, not a verdict on prompts in general.
+- Holdout discipline held: the guard refused a second v1 run, each version is logged once, and nothing was changed after seeing the numbers. A fix for this (for example "if the owner is not stated, say so") would be a new prompt that needs fresh questions, so it is listed as future work.
+- Latency from the holdout is unusable (single calls took up to 282 s on the free tier). Use dev p50 and p95 and say why.
+- Cost per query is about $0.0008 (about $0.80 per 1,000 queries) at $0.30 per 1M input and $2.50 per 1M output tokens, from a third-party price page dated 2026-10-19. Record the price and date, and recheck before quoting. The actual runs were free tier.
+
+### Key interview takeaway
+
+**"How do you know your LLM judge is reliable?"**
+
+> "I did not trust it until I checked it. I planted known failures to confirm it catches them, then I graded a sample by hand, blind, against a bar I set in advance. The first result missed the bar, and the cause was my own rubric, not the model. I fixed it openly, logged both numbers, and froze everything before touching the holdout."
+
+### Most important distinction
+
+**Judge sanity check:** can the judge catch failures I planted on purpose?
+
+**Judge agreement with a human:** does the judge score real answers the way a careful person would?
+
+**Holdout:** does the finding still hold on questions that were never used to build or tune anything?
+
+### Check yourself
+
+1. Why is one run per prompt version not enough?
+2. Why must the pass bar be set before looking at the numbers?
+3. How can a rubric flaw favour one prompt version, and how did we find it?
+4. Why is a 100% agreement figure after a fix weaker evidence than a 100% figure on the first try, and what did we do about that?
+5. Why did we not fix the G-028 problem with a new prompt right after the holdout, and what would a fair test of such a fix need?
