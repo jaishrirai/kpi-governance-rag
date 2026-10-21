@@ -9,6 +9,7 @@ Settings come from .env (git-ignored): GEMINI_API_KEY and LLM_MODEL. The key is 
 Run from the repo root with PYTHONPATH=src, like the other modules.
 """
 import os
+import re
 import time
 from dataclasses import dataclass
 
@@ -17,6 +18,8 @@ from dataclasses import dataclass
 DEFAULT_MAX_OUTPUT_TOKENS = 800
 # HTTP codes worth retrying: rate limit, server error, overloaded (the 503 seen in the smoke test).
 TRANSIENT_CODES = (429, 500, 503)
+# A 429 whose text names this quota id means the daily allowance is used up: waiting seconds cannot help.
+DAILY_QUOTA_MARK = "PerDay"
 # Connection-level failures (DNS lookup failed, server dropped the connection, timeout) carry no HTTP code,
 # so they are recognised by class name. Matching by name keeps httpx, used inside the Gemini SDK, out of
 # the imports here.
@@ -40,8 +43,28 @@ class LLMResult:
     latency_ms: float
 
 
+def is_daily_quota_error(error):
+    """True for a 429 that says a per-day quota is used up. Accepts an exception or its text."""
+    text = str(error)
+    return "429" in text and DAILY_QUOTA_MARK in text
+
+
+def retry_hint(text):
+    """'about when does it reset' from a 'Please retry in 23h30m35s' message, or None."""
+    match = re.search(r"retry in (?:(\d+)h)?(?:(\d+)m)?([\d.]+)s", str(text))
+    if not match:
+        return None
+    hours, minutes = int(match.group(1) or 0), int(match.group(2) or 0)
+    if hours:
+        return f"{hours}h {minutes}m"
+    return f"{minutes}m" if minutes else f"{float(match.group(3)):.0f}s"
+
+
 def is_transient(error):
-    """True for errors worth a retry: HTTP 429, 500 or 503, or a dropped or unreachable connection."""
+    """True for errors worth a retry: HTTP 429, 500 or 503, or a dropped or unreachable connection.
+    A 429 for a used-up daily quota is not transient."""
+    if is_daily_quota_error(error):
+        return False
     if getattr(error, "code", None) in TRANSIENT_CODES:
         return True
     if isinstance(error, (ConnectionError, TimeoutError)):

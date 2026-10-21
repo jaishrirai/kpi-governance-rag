@@ -223,3 +223,47 @@ def test_summarise_shows_none_not_zero_when_no_answer_was_judged():
     assert s["claims"] is None and s["unsupported_claims"] is None and s["faithful_answers"] is None
     assert s["judge_errors"] == 1
     assert "| unsupported claims | n/a |" in ge.format_report([("x", s)])
+
+
+DAILY_ERR = RuntimeError("ClientError: 429 RESOURCE_EXHAUSTED GenerateRequestsPerDayPerProjectPerModel-FreeTier "
+                         "Please retry in 23h30m35.5s.")
+
+
+def test_daily_quota_stops_the_judge_batch_and_keeps_clean_earlier_results():
+    records = [run_record("A"), run_record("B"), run_record("C")]
+    prior = [{**records[2], "judge": clean_judgment("m")}]
+    calls = []
+
+    def quota(system, user, **kwargs):
+        calls.append(1)
+        raise DAILY_ERR
+
+    judged = ge.judge_records(records, prior, quota, "m", progress=lambda line: None)
+    assert len(calls) == 2  # A: key facts and faithfulness both tried, then the batch stopped
+    assert judged[1]["judge"]["errors"] == ["not attempted: daily quota exhausted"]
+    assert judged[2]["judge"] == clean_judgment("m")  # a clean earlier result is kept
+    assert "resets in about 23h 30m" in ge.quota_note(judged)
+    assert ge.quota_note([{"judge": {"errors": []}}]) is None
+
+
+def test_run_questions_stops_when_the_daily_quota_is_used_up(tmp_path):
+    def quota(question, hits, correction=None):
+        raise DAILY_ERR
+
+    records = ge.run_questions(ROWS, "answer_v1", lambda q: list(HITS), tmp_path / "t.jsonl", generate_fn=quota,
+                               progress=lambda line: None)
+    assert len(records) == 1 and "429" in records[0]["error"]
+
+
+def test_paced_sleeps_between_calls_but_not_before_the_first():
+    sleeps = []
+    fn = ge.paced(lambda *a, **k: "r", 5, sleeps.append)
+    assert [fn(), fn(), fn()] == ["r", "r", "r"] and sleeps == [5, 5]
+    assert ge.paced(len, 0) is len
+
+
+def test_judge_model_override_and_cli_flags():
+    assert ge.judge_model_id("gemini-3.5-flash-lite") == "gemini-3.5-flash-lite"
+    args = ge.build_parser().parse_args(["judge", "--input", "f.jsonl", "--pause", "5", "--judge-model", "m"])
+    assert args.pause == 5.0 and args.judge_model == "m"
+    assert ge.build_parser().parse_args(["run", "--version", "answer_v1"]).pause == 0

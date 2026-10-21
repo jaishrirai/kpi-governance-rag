@@ -6,6 +6,11 @@ the answers with an LLM judge plus code checks. Run from the repo root with PYTH
   python -m eval.generation_eval judge --input results/generation/answer_v1_dev.jsonl
   python -m eval.generation_eval report --inputs results/generation/answer_v1_dev.judged.jsonl
 
+Free-tier helpers: --pause SECONDS spaces the model calls (per-minute limits), --judge-model overrides JUDGE_MODEL
+in .env, and a per-day quota error stops the batch with a note of when it resets. A rerun of `judge` keeps clean
+results from the same judge model and retries the rest; switching judge model rejudges everything, so one
+comparison is never scored by two different judges.
+
 What is scored (dev and holdout are reported separately):
   key-fact coverage   judge, one yes/no per golden key fact (answerable questions)
   refusal             code: unanswerable questions should be refused, answerable ones should not be
@@ -22,6 +27,7 @@ import json
 import math
 import os
 import re
+import time
 from datetime import date
 from functools import partial
 from pathlib import Path
@@ -115,10 +121,27 @@ def build_record(row, version, result, hits):
     }
 
 
-def run_questions(rows, version, retrieve_fn, trace_path, generate_fn=None, progress=print):
+def paced(complete_fn, pause, sleep=time.sleep):
+    """Wrap a model call so there are `pause` seconds between calls (not before the first)."""
+    if not pause:
+        return complete_fn
+    state = {"first": True}
+
+    def run(*args, **kwargs):
+        if not state["first"]:
+            sleep(pause)
+        state["first"] = False
+        return complete_fn(*args, **kwargs)
+
+    return run
+
+
+def run_questions(rows, version, retrieve_fn, trace_path, generate_fn=None, progress=print, pause=0,
+                  sleep=time.sleep):
     """Run each question through retrieve -> generate -> validate (pipeline.ask). Keeps the retrieved chunk
     text in each record, because the faithfulness judge needs it."""
-    generate_fn = generate_fn or partial(gen.generate, prompt_version=version)
+    generate_fn = generate_fn or partial(gen.generate, prompt_version=version,
+                                         complete_fn=paced(llm.complete, pause, sleep))
     records = []
     for row in rows:
         captured = {}
@@ -132,6 +155,9 @@ def run_questions(rows, version, retrieve_fn, trace_path, generate_fn=None, prog
         records.append(record)
         progress(f"{record['id']} [{version}] refused={record['refused']} valid={record['valid']} "
                  f"attempts={record['attempt_count']} error={record['error']}")
+        if record["error"] and llm.is_daily_quota_error(record["error"]):
+            progress("Daily quota exhausted: stopping. The remaining questions were not run.")
+            break
     return records
 
 
@@ -214,6 +240,7 @@ def judge_records(records, prior=(), complete_fn=llm.complete, model=None, progr
     as it is, so a rerun retries only the failures."""
     done = {r["id"]: r for r in prior if r["judge"]["errors"] == []}
     judged = []
+    stopped = False
     for record in records:
         old = done.get(record["id"])
         if (old and old["question"] == record["question"] and old["answer"] == record["answer"]
@@ -221,10 +248,17 @@ def judge_records(records, prior=(), complete_fn=llm.complete, model=None, progr
             judged.append(old)
             progress(f"{record['id']} kept (already judged)")
             continue
+        if stopped:
+            judged.append({**record, "judge": {"model": model, "key_facts": None, "claims": None,
+                                               "errors": ["not attempted: daily quota exhausted"]}})
+            continue
         result = judge_record(record, complete_fn, model)
         judged.append(result)
         errors = result["judge"]["errors"]
         progress(f"{record['id']} judged errors={errors if errors else 'none'}")
+        if any(llm.is_daily_quota_error(error) for error in errors):
+            stopped = True
+            progress("Daily quota exhausted: stopping. The remaining records are marked 'not attempted'.")
     return judged
 
 
@@ -241,7 +275,21 @@ def save_judged(judged, out, model):
     return failed
 
 
-def judge_model_id():
+def quota_note(judged):
+    """A plain note when a per-day quota stopped the judge, else None."""
+    for record in judged:
+        for error in record["judge"]["errors"]:
+            if llm.is_daily_quota_error(error):
+                wait = llm.retry_hint(error)
+                return ("Daily quota used up for this judge model" + (f" (resets in about {wait})" if wait else "")
+                        + ". Rerun the same command after that, or pass --judge-model with another model. "
+                        "Clean records are kept.")
+    return None
+
+
+def judge_model_id(override=None):
+    if override:
+        return override
     llm._load_env()
     model = os.environ.get("JUDGE_MODEL")
     if not model:
@@ -362,17 +410,25 @@ def cmd_run(args):
         guard_holdout(args.version, args.confirm_holdout)
         mark_holdout_used(args.version, out)
     retrieve = pipeline.make_retriever()
-    records = run_questions(rows, args.version, retrieve, trace_path=out.with_name(f"traces_{out.stem}.jsonl"))
+    records = run_questions(rows, args.version, retrieve, trace_path=out.with_name(f"traces_{out.stem}.jsonl"),
+                            pause=args.pause)
     write_jsonl(out, records)
     print(f"wrote {len(records)} records to {out}")
+    if len(records) < len(rows):
+        print(f"Stopped early: {len(records)} of {len(rows)} questions ran (daily quota). Rerun after it resets.")
+        raise SystemExit(1)
 
 
 def cmd_judge(args):
-    model = judge_model_id()
+    model = judge_model_id(args.judge_model)
     out = Path(args.input).with_suffix(".judged.jsonl")
     prior = read_jsonl(out) if out.exists() else []
-    judged = judge_records(read_jsonl(args.input), prior, model=model)
-    if save_judged(judged, out, model):
+    judged = judge_records(read_jsonl(args.input), prior, paced(llm.complete, args.pause), model)
+    failed = save_judged(judged, out, model)
+    note = quota_note(judged)
+    if note:
+        print(note)
+    if failed:
         raise SystemExit(1)
 
 
@@ -387,7 +443,7 @@ def cmd_report(args):
     print(format_report(items, args.price_in, args.price_out, args.price_note))
 
 
-def main(argv=None):
+def build_parser():
     parser = argparse.ArgumentParser(description="Step 3.1 generation evaluation")
     sub = parser.add_subparsers(dest="command", required=True)
     run = sub.add_parser("run", help="run the pipeline on golden questions")
@@ -396,9 +452,12 @@ def main(argv=None):
     run.add_argument("--ids", help="comma-separated question ids, for example G-018,G-034")
     run.add_argument("--out", help="output file (default results/generation/<version>_<split>.jsonl)")
     run.add_argument("--confirm-holdout", action="store_true")
+    run.add_argument("--pause", type=float, default=0, help="seconds between model calls (free-tier per-minute limits)")
     run.set_defaults(func=cmd_run)
     judge = sub.add_parser("judge", help="score a run file with the LLM judge (rerun to retry only the failures)")
     judge.add_argument("--input", required=True)
+    judge.add_argument("--pause", type=float, default=0, help="seconds between model calls (free-tier per-minute limits)")
+    judge.add_argument("--judge-model", help="Gemini model ID to judge with (default: JUDGE_MODEL in .env)")
     judge.set_defaults(func=cmd_judge)
     report = sub.add_parser("report", help="summarise one or more judged files")
     report.add_argument("--inputs", nargs="+", required=True)
@@ -406,7 +465,11 @@ def main(argv=None):
     report.add_argument("--price-out", type=float, help="USD per 1M output tokens")
     report.add_argument("--price-note", default="", help="where and when the prices came from")
     report.set_defaults(func=cmd_report)
-    args = parser.parse_args(argv)
+    return parser
+
+
+def main(argv=None):
+    args = build_parser().parse_args(argv)
     args.func(args)
 
 

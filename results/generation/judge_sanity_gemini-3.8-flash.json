@@ -1,0 +1,113 @@
+{
+ "judge_model": "gemini-3.8-flash",
+ "results": [
+  {
+   "case": "facts: complete answer covers every fact (positive control)",
+   "expected": [
+    true,
+    true,
+    true
+   ],
+   "got": [
+    true,
+    true,
+    true
+   ],
+   "verdict": "PASS"
+  },
+  {
+   "case": "facts: vague answer covers none",
+   "expected": [
+    false,
+    false,
+    false
+   ],
+   "got": [
+    false,
+    false,
+    false
+   ],
+   "verdict": "PASS"
+  },
+  {
+   "case": "facts: Executive KPI Pack left out",
+   "expected": [
+    true,
+    true,
+    false
+   ],
+   "got": [
+    true,
+    true,
+    false
+   ],
+   "verdict": "PASS"
+  },
+  {
+   "case": "facts: FAQ 90-day figure given as the rule",
+   "expected": [
+    false,
+    false
+   ],
+   "got": [
+    false,
+    false
+   ],
+   "verdict": "PASS"
+  },
+  {
+   "case": "facts: clear authority wording (positive control)",
+   "expected": [
+    true,
+    true
+   ],
+   "got": [
+    true,
+    true
+   ],
+   "verdict": "PASS"
+  },
+  {
+   "case": "claims: faithful answer (positive control)",
+   "expected": "all_supported",
+   "got": [
+    "supported: Customer Churn Rate is calculated as the number of customers in the start base with no purchase for 180 days by quarter end divided by customers in the start base, multiplied by 100.",
+    "supported: Customer Churn Rate is used in the Customer 360 Dashboard and the Executive KPI Pack."
+   ],
+   "verdict": "PASS"
+  },
+  {
+   "case": "claims: invented dashboard",
+   "expected": "some_unsupported",
+   "got": [
+    "supported: Customer Churn Rate is used in the Customer 360 Dashboard.",
+    "UNSUPPORTED: Customer Churn Rate is used in the Finance Cockpit dashboard."
+   ],
+   "verdict": "PASS"
+  },
+  {
+   "case": "claims: wrong owner",
+   "expected": "some_unsupported",
+   "got": [
+    "UNSUPPORTED: Customer Churn Rate is owned by the Head of Finance."
+   ],
+   "verdict": "PASS"
+  },
+  {
+   "case": "claims: invented number",
+   "expected": "some_unsupported",
+   "got": [
+    "UNSUPPORTED: An Active Customer is anyone who completed a purchase in the last 45 days."
+   ],
+   "verdict": "PASS"
+  },
+  {
+   "case": "INFO claims: FAQ 90-day figure as the rule (support is not authority)",
+   "expected": null,
+   "got": [
+    "supported: An Active Customer is anyone who bought something in the last 90 days"
+   ],
+   "verdict": "INFO"
+  }
+ ]
+}

@@ -1,0 +1,42 @@
+{
+ "H01": {
+  "id": "G-033",
+  "version": "answer_v1"
+ },
+ "H02": {
+  "id": "G-029",
+  "version": "answer_v2"
+ },
+ "H03": {
+  "id": "G-031",
+  "version": "answer_v1"
+ },
+ "H04": {
+  "id": "G-027",
+  "version": "answer_v2"
+ },
+ "H05": {
+  "id": "G-021",
+  "version": "answer_v2"
+ },
+ "H06": {
+  "id": "G-013",
+  "version": "answer_v1"
+ },
+ "H07": {
+  "id": "G-005",
+  "version": "answer_v1"
+ },
+ "H08": {
+  "id": "G-025",
+  "version": "answer_v2"
+ },
+ "H09": {
+  "id": "G-017",
+  "version": "answer_v1"
+ },
+ "H10": {
+  "id": "G-001",
+  "version": "answer_v2"
+ }
+}

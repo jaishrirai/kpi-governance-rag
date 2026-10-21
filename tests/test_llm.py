@@ -136,3 +136,31 @@ def test_other_errors_without_a_code_are_not_retried():
 def test_is_transient_matches_codes_and_connection_names():
     assert llm.is_transient(FakeError(503)) and llm.is_transient(ConnectError("x"))
     assert not llm.is_transient(FakeError(400)) and not llm.is_transient(ValueError("x"))
+
+
+class QuotaError(Exception):
+    code = 429
+
+
+DAILY = QuotaError("429 RESOURCE_EXHAUSTED. quotaId: GenerateRequestsPerDayPerProjectPerModel-FreeTier. "
+                   "Please retry in 23h30m35.565s.")
+PER_MINUTE = QuotaError("429 RESOURCE_EXHAUSTED. quotaId: GenerateRequestsPerMinutePerProjectPerModel-FreeTier")
+
+
+def test_daily_quota_429_is_not_retried():
+    client = FakeClient([DAILY, fake_response()])
+    with pytest.raises(QuotaError):
+        llm.complete("s", "u", model="m1", client=client, sleep=no_sleep)
+    assert len(client.calls) == 1 and llm.is_daily_quota_error(DAILY)
+
+
+def test_per_minute_429_is_still_retried():
+    client = FakeClient([PER_MINUTE, fake_response("ok")])
+    assert llm.complete("s", "u", model="m1", client=client, sleep=no_sleep).text == "ok"
+    assert not llm.is_daily_quota_error(PER_MINUTE)
+
+
+def test_retry_hint_reads_the_reset_time():
+    assert llm.retry_hint(str(DAILY)) == "23h 30m"
+    assert llm.retry_hint("Please retry in 5m12.3s.") == "5m"
+    assert llm.retry_hint("retry in 42.7s") == "43s" and llm.retry_hint("no hint here") is None

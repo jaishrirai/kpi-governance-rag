@@ -1,0 +1,42 @@
+﻿code,kind,item,answer,notes
+H01,fact,The Executive KPI Pack may only contain Certified KPIs,y,
+H01,fact,Provisional KPIs must not appear in the Executive KPI Pack,y,
+H01,faithful,Every claim in the answer is supported by the context chunks,y,
+H02,fact,two-month parallel test,y,
+H02,fact,within 1%,y,
+H02,fact,KPI Council,y,
+H02,faithful,Every claim in the answer is supported by the context chunks,y,
+H03,fact,the data owner must also approve,y,
+H03,fact,Line manager,y,
+H03,fact,Data owner approval,y,
+H03,faithful,Every claim in the answer is supported by the context chunks,y,
+H04,fact,KPI: Customer Acquisition Cost | Owner: Head of Marketing Analytics | Status: Certified,y,
+H04,fact,KPI: Marketing ROI (ROAS) | Owner: Head of Marketing Analytics | Status: Provisional,y,
+H04,faithful,Every claim in the answer is supported by the context chunks,y,
+H05,fact,close their loyalty account,y,
+H05,fact,understated churn,y,
+H05,fact,Do not use for reporting,n,answer does not say v1 must not be used for reporting
+H05,faithful,Every claim in the answer is supported by the context chunks,y,
+H06,fact,no purchase for 180 days,y,
+H06,fact,Customer 360 Dashboard,y,
+H06,fact,Executive KPI Pack,y,
+H06,faithful,Every claim in the answer is supported by the context chunks,y,
+H07,fact,Head of Finance Analytics,y,team name without 'Head of'; same meaning for the question
+H07,fact,Head of Sales Analytics,y,team name without 'Head of'; same meaning for the question
+H07,fact,Head of Customer Analytics,y,team name without 'Head of'; same meaning for the question
+H07,fact,Head of Marketing Analytics,y,team name without 'Head of'; same meaning for the question
+H07,fact,Head of Supply Chain Analytics,y,team name without 'Head of'; same meaning for the question
+H07,fact,Head of Digital Product,y,team name without 'Head of'; same meaning for the question
+H07,faithful,Every claim in the answer is supported by the context chunks,y,
+H08,fact,Head of Customer Analytics,y,
+H08,fact,daily 05:00,y,
+H08,fact,Confidential,y,
+H08,faithful,Every claim in the answer is supported by the context chunks,y,
+H09,fact,Net Revenue Retention,y,
+H09,fact,12 months,y,
+H09,fact,180 days,y,
+H09,fact,New customers acquired during the period are excluded,n,answer does not mention the exclusion of new customers
+H09,faithful,Every claim in the answer is supported by the context chunks,y,
+H10,fact,Customer 360 Dashboard,y,
+H10,fact,"Linked KPIs: KPI-006, KPI-007, KPI-010, KPI-011, KPI-012, KPI-013",y,
+H10,faithful,Every claim in the answer is supported by the context chunks,y,
