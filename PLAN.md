@@ -112,14 +112,15 @@ Already done before Claude Code: repo skeleton, `requirements.txt`, `.gitignore`
 - [ ] Key-fact coverage of answers is measured (2.6B and 3.1). Vector retrieval of bare KPI codes is NOT run as a separate diagnostic; it stays a documented limit (G-028 is one real example: the KPI-020 owner chunk was not retrieved)
 
 ### 3.3 Streamlit demo (0:50)
-- [ ] `app/streamlit_app.py`: question box, filters, config picker, **Retrieval Inspector** table (vector rank, BM25 rank, RRF score, rerank score), answer with clickable citations, tokens and latency. Calls the pipeline directly (no API).
-- [ ] 60-second demo video (question that works, Churn trap, refusal). First thing cut if behind.
+- [x] Streamlit demo built (`app/streamlit_app.py`, `src/rag/demo_ui.py`, `src/rag/demo_view.py`): 7 example questions, question box, answer with numbered sources and certification labels, tokens and time, "Show how it works" view (vector against BM25/RRF comparison, read-only), builder view with chunk ids. Calls the pipeline directly (no API). Tests replay recorded answers, no network. Commit `3b09886`
+- [x] 10 screenshots in `docs/screenshots/` instead of a video (the video was cut)
 
 ### 3.5 Write-up and publish (0:40)
-- [ ] Final `results/experiments.md`: grid, generation table, cost and latency, 3-5 findings, failures, limits (filled as we go, real runs only)
-- [ ] README (what, problem, diagram, how to run, results, trade-offs, limits, ~10-line "how this would scale" linking to my architecture doc)
-- [ ] Secrets check (`git ls-files` shows only `.env.example`), then make the repo public
-- [ ] Interview line filled with my own numbers (brief section 14)
+- [x] Final `results/experiments.md`: summary, grid, generation tables, cost and latency, 5 findings, failures, limits (commits `861d5f7` and `47aebf6`)
+- [x] README (what, problem, diagram, how to run, results, trade-offs, limits, "beyond this prototype" section). No architecture doc link: none exists and none is referenced. Fresh-terminal run passed 2026-10-23 (248 tests passed, 1 skipped; `rag.ask`; demo; 3-question dev eval with `--out`). Commit `47aebf6`
+- [ ] Secrets check (`git ls-files` shows only `.env.example`), push, then make the repo public
+- [x] Interview line filled with my own numbers (brief section 14), agreed in chat 2026-10-23
+- [ ] Close the GitHub issues for steps 2.3 to 2.5 and 3.1 with a short result comment
 
 **Day 2 wrap-up:** batched CONCEPTS.md notes, approved by me, then final commits.
 
