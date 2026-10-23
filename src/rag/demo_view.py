@@ -30,7 +30,7 @@ EXAMPLES = [
      "How does a KPI go from Provisional to Certified?"),
     ("Can a Provisional KPI go on the Executive pack? (a governance rule)",
      "Can I put Basket Size on the Executive KPI Pack?"),
-    ("Two sources disagree (certified rule versus an informal FAQ)",
+    ("Conflicting source nearby (an informal FAQ says 90 days)",
      "How many days do we use to count an Active Customer?"),
     ("Old churn definition (a deprecated source)",
      "What did the old churn rate (v1) measure and why was it replaced?"),

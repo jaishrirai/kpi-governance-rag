@@ -1,4 +1,35 @@
-# Retrieval experiments (M2)
+# Experiments: retrieval (M2) and generation (M3 and M4)
+
+## Summary (read this first)
+
+Corpus: fictional Kestrel Retail Group, 52 chunks in the default chunking (V1). Golden set: 40 questions (30 dev, 10 holdout, 8 unanswerable), labels v2. Answer model and judge: `gemini-3.5-flash-lite`, free tier, temperature 0.
+
+**Default configuration:** chunking V1, vector search, top 5 chunks, prompt `answer_v1`, certification label on every chunk, citation check with one retry.
+
+| Result | Dev | Holdout |
+|---|---|---|
+| Retrieval, document level: recall@5 / hit@5 / MRR@10 | 0.815 / 1.000 / 0.938 | 0.729 / 0.875 / 0.646 |
+| Key-fact coverage of answers (v1) | 75.6% (59 of 78) | 60.9% (14 of 23) |
+| Faithful answers (v1) | 22 of 22 | 8 of 8 |
+| Unanswerable questions refused correctly | 6 of 6 | 2 of 2 |
+| Wrong refusals of answerable questions (v1) | 2 (G-006, G-015) | 0 |
+| Cost per query | about $0.0008 | about $0.0008 |
+
+Retrieval metrics use 24 dev and 8 holdout answerable questions. Details and the runs behind every number are below and in `results/runs.csv` and `results/generation/`.
+
+### Findings
+
+1. **Plain vector search was the best default; the extra machinery did not earn its place.** Equal-weight hybrid (RRF) lost to vector on dev in all three chunkings (recall@5 down 0.05 to 0.10). Cross-encoder reranking was mixed on dev (recall +0.010, MRR@10 -0.028) and better on an 8-question holdout, at about 50 times the latency. Both stay in the code as optional settings.
+2. **Retrieval quality is not source authority, so governance lives in the generation step.** Neither hybrid nor rerank knows which source is Certified. Reranking pulled the informal, conflicting FAQ-01 into the dev top 5 on 11 questions instead of 7. The fix used is a certification label on every chunk plus prompt rules. On the trap question G-018 the answer states the certified 30-day rule and calls the 90-day figure informal.
+3. **A rubric bug can pick the winner.** The first judge check missed its bar (80.6% against 85%). All six misses were one answer (G-005) whose key facts asked for role titles when the question asked for teams. It favoured v2 over v1. The fix was logged openly and agreement went to 100%; both figures are kept.
+4. **The completeness prompt (v2) gained a little and cost trust, so it was not adopted.** v2 covered 3 more facts on dev and 1 more on holdout, but on holdout it produced one unsupported claim (G-028, the owner of KPI-020, inferred from an action owner). The pass rule, written before the holdout run, failed on faithfulness. v1 stays the default.
+5. **Most remaining misses are retrieval misses.** Broad list questions (G-006, G-015) were refused by both prompts because only some of the needed documents were retrieved, and a bare KPI code (G-028, and an ad hoc KPI-010 test) pulled process documents instead of the KPI. Hybrid does not fix this: for the G-028 question the demo's comparison shows hybrid's top 5 holds neither the KPI-020 document nor the glossary, only the review minutes ranked higher.
+
+### Limits (details at the end)
+
+40 questions and 8 answerable holdout questions show direction, not proof. The corpus is synthetic and small. 30 of the 40 questions were drafted with Claude. The judge is the same model as the answer model, checked on only 10 hand-graded answers. Temperature 0 is not fully repeatable.
+
+## Retrieval experiments (M2)
 
 Metrics at document level, answerable questions only (dev n=24, holdout n=8). recall@5 is the share of expected documents in the top 5 (headline), hit@5 is 1 if any expected document is in the top 5, MRR@10 uses the first expected document. All runs are in `results/runs.csv`. Fetch depth 50 chunks, collapsed to documents before scoring.
 
@@ -165,3 +196,69 @@ Status: proposed decision accepted by the project owner on 2026-10-16. No furthe
 6. **Decision.** Vector V1 is the default and the reference baseline. Hybrid and rerank stay as optional, documented code. No tuning of RRF weights, k or the reranker on 24 dev questions. Governance is handled in generation (Step 2.5) through certification labels, ordering and prompt rules. Rerank is judged on end-to-end answer quality in Step 3.1.
 7. **What would change this:** a larger golden set, a weighted hybrid chosen on fresh questions, or a clear end-to-end gain from rerank in Step 3.1.
 8. **Limits to state in the README:** 40 questions (24 dev, 8 answerable holdout), synthetic corpus, document-level metrics, questions drafted with Claude.
+
+## Step 2.5 to 3.1 generation (answer prompts v1 and v2, judge `gemini-3.5-flash-lite`)
+
+### What was run
+
+Retrieval for every answer: V1 chunking, vector top 5. Prompts: `answer_v1` (the default) and `answer_v2` (`answer_v1` plus one completeness rule). Each answer is checked in code (every cited chunk must have been retrieved) and then judged on two things: key-fact coverage (one yes or no per key fact in the golden set) and faithfulness (is every claim supported by the retrieved chunks). Dev was run for both versions. Holdout was run once per version after the rubric, prompts and pass rule were locked (`results/generation/holdout_runs.txt`). The judge was checked first with planted failures (9 of 9) and then against 10 answers hand-graded blind (bar set before any number: 85% on key facts, 8 of 10 on faithfulness).
+
+### Results
+
+| | Dev v1 | Dev v2 | Holdout v1 | Holdout v2 |
+|---|---|---|---|---|
+| Questions (answerable / unanswerable) | 24 / 6 | 24 / 6 | 8 / 2 | 8 / 2 |
+| Key-fact coverage | 75.6% (59 of 78) | 79.5% (62 of 78) | 60.9% (14 of 23) | 65.2% (15 of 23) |
+| Answers with every key fact | 16 of 24 | 18 of 24 | 3 of 8 | 4 of 8 |
+| Faithful answers (non-refused) | 22 of 22 | 22 of 22 | 8 of 8 | 7 of 8 |
+| Unsupported claims | 0 | 0 | 0 | 1 (G-028) |
+| Wrong refusals (answerable) | 2 (G-006, G-015) | 2 (G-006, G-015) | 0 | 0 |
+| Correct refusals (unanswerable) | 6 of 6 | 6 of 6 | 2 of 2 | 2 of 2 |
+| Retries triggered, policy refusals, errors | 0, 0, 0 | 0, 0, 0 | 0, 0, 0 | 0, 0, 0 |
+| Mean tokens per query (in / out) | 1,884 / 103 | 1,922 / 116 | 1,961 / 83 | 1,999 / 87 |
+| Cost per query | $0.00082 | $0.00087 | $0.00080 | $0.00082 |
+| Model-call latency p50 / p95 | 4.7 s / 8.4 s | 4.0 s / 6.4 s | not reported | not reported |
+
+Combined key facts: v1 73 of 101, v2 77 of 101.
+
+Cost uses $0.30 per 1M input and $2.50 per 1M output tokens from a third-party price page dated 2026-10-19 (recheck before quoting). The runs themselves used the free tier. Holdout latency is not reported: single calls took up to 282 s on the free tier, which is queueing noise, not model speed. Dev latency is the model call only (retrieval adds a median of about 0.2 s, range 15 to 900 ms).
+
+### Pass rule and decision
+
+Written on 2026-10-21 before the holdout run: v2 generalizes if its holdout coverage is at least v1's, faithfulness is not lower, there are no new wrong refusals and no unsupported claims.
+
+| Condition | v2 against v1 | Result |
+|---|---|---|
+| Coverage at least v1 | 65.2% against 60.9% | pass |
+| Faithfulness not lower | 87.5% against 100% | fail |
+| No new wrong refusals | 0 and 0 | pass |
+| No unsupported claims | 1 against 0 | fail |
+
+Outcome: `answer_v1` stays the default (`docs/decisions.md` rows 21 and 22).
+
+### Verified findings
+
+1. **Judge validation changed one number openly.** First agreement with the hand grades: 80.6% on 31 key facts (bar 85%). All six misses were G-005 on v1. The key facts said "Head of Finance Analytics" and similar, the question asked for teams, v1 answered with team names (judge 0 of 6) and v2 repeated "Head of" (6 of 6). G-005's key facts were changed to team names and G-005 was rejudged for both versions only. Second agreement: 100%, kappa 1.0, faithfulness 10 of 10. The bar and the human grades were not changed. Only 2 of the 31 human grades were "no", so a lenient judge is weakly tested.
+2. **The v2 gain on dev is small and mostly one question.** Only G-017 and G-027 differ between the versions and v2 wins both. G-017 was one of the questions v2 was designed around, so G-027 is the independent evidence. Four single-fact misses (a date, "loyalty tier", "Do not use for reporting", "Status: Provisional") were not fixed by the completeness rule in either version.
+3. **The holdout unsupported claim is real, not a judge error.** The retrieved chunks for G-028 never stated the owner of KPI-020 (the glossary chunk was missed). The only "Owner: Head of Digital Product" in context belonged to an action. v1 said the owner is not stated. v2 answered "owned by the Head of Digital Product" with a citation. That is true in the real glossary, but not supported by what the model was shown. A completeness rule can push a model to fill a gap by inference, which is the wrong trade in a governance setting.
+4. **Hybrid does not fix G-028.** In the demo comparison for "Who owns KPI-020 and what has to be fixed before it can be certified?", the vector top 5 holds the review minutes at rank 3 and hybrid moves them to rank 1, but neither the vector top 5 nor hybrid's top 5 holds the KPI-020 document or the glossary (one question, one screenshot, not a full run). This matches the earlier retrieval result, where hybrid improved G-028's document-level rank (reciprocal rank 0.33 to 1.00) because the minutes moved up, not because the owner source was found.
+5. **The trap question works, with run-to-run variation.** G-018 (Active Customer days) was answered with the certified 30-day rule in every run seen. In the dev run the answer cited KPI-006 and the informal FAQ-01; in two later live demo runs it cited only KPI-006. Same question, same model, temperature 0, different citations. The retry was never triggered by a real answer in these 80 records or in the hand tests, so it is unit-tested only.
+
+### Not done on purpose
+
+- No v3 prompt (for example "if the owner is not stated, say so"). The holdout has been seen, so a new prompt needs fresh questions. Future work.
+- No separate diagnostic of vector retrieval on bare KPI codes. G-028 and the ad hoc KPI-010 test (`results/step2_5_hand_tests.md`, test 4) are the evidence.
+- Certified-first ordering of context chunks. No evidence called for it.
+- No tuning of RRF weights, rerank settings or prompts against the holdout.
+
+## Limits to state in the README
+
+- 40 questions: 30 dev and 10 holdout, with 8 answerable holdout questions. One question moves a holdout score by 0.125 (retrieval) or about 4 percentage points (key facts). Results show direction, not proof.
+- Synthetic corpus of 52 chunks. Depth 50 returns almost the whole index, so retrieval depth results will not transfer to a large corpus.
+- 30 of the 40 golden questions were drafted with Claude and reviewed by the project owner.
+- Document-level retrieval metrics, not chunk-level.
+- The judge and the answer model are the same model. Checked against 10 hand-graded answers (31 key facts), where only 2 human grades were "no".
+- Three holdout questions have soft key facts, listed before the run and not fixed: G-004 (terse facts), G-028 (compound facts that go beyond the question), G-032 (the second fact does not check the warning-banner action).
+- Temperature 0 is not fully repeatable. The same question can give different wording and different citations on different days.
+- Holdout latency is unusable (free-tier queueing). Cost is a calculation from a third-party price page, not a bill.
+- The demo's BM25 and hybrid view is a read-only comparison. The answer always comes from vector V1.
