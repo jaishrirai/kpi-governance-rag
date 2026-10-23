@@ -1,0 +1,3 @@
+[client]
+# Hides the Deploy button and developer menu, for clean screenshots and a viewer-style page.
+toolbarMode = "viewer"

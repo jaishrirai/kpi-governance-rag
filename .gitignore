@@ -5,3 +5,4 @@ __pycache__/
 data/index/
 data/processed/
 .pytest_cache/
+results/demo_traces.jsonl
