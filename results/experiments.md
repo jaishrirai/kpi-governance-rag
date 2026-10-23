@@ -27,7 +27,7 @@ Retrieval metrics use 24 dev and 8 holdout answerable questions. Details and the
 
 ### Limits (details at the end)
 
-40 questions and 8 answerable holdout questions show direction, not proof. The corpus is synthetic and small. 30 of the 40 questions were drafted with Claude. The judge is the same model as the answer model, checked on only 10 hand-graded answers. Temperature 0 is not fully repeatable.
+40 questions and 8 answerable holdout questions show direction, not proof. The corpus is synthetic and small. 25 of the 40 questions were drafted with Claude. The judge is the same model as the answer model, checked on only 10 hand-graded answers. Temperature 0 is not fully repeatable.
 
 ## Retrieval experiments (M2)
 
@@ -217,7 +217,7 @@ Retrieval for every answer: V1 chunking, vector top 5. Prompts: `answer_v1` (the
 | Retries triggered, policy refusals, errors | 0, 0, 0 | 0, 0, 0 | 0, 0, 0 | 0, 0, 0 |
 | Mean tokens per query (in / out) | 1,884 / 103 | 1,922 / 116 | 1,961 / 83 | 1,999 / 87 |
 | Cost per query | $0.00082 | $0.00087 | $0.00080 | $0.00082 |
-| Model-call latency p50 / p95 | 4.7 s / 8.4 s | 4.0 s / 6.4 s | not reported | not reported |
+| Model-call latency p50 / p95 | 4.6 s / 8.4 s | 4.0 s / 6.4 s | not reported | not reported |
 
 Combined key facts: v1 73 of 101, v2 77 of 101.
 
@@ -255,7 +255,7 @@ Outcome: `answer_v1` stays the default (`docs/decisions.md` rows 21 and 22).
 
 - 40 questions: 30 dev and 10 holdout, with 8 answerable holdout questions. One question moves a holdout score by 0.125 (retrieval) or about 4 percentage points (key facts). Results show direction, not proof.
 - Synthetic corpus of 52 chunks. Depth 50 returns almost the whole index, so retrieval depth results will not transfer to a large corpus.
-- 30 of the 40 golden questions were drafted with Claude and reviewed by the project owner.
+- 25 of the 40 golden questions were drafted with Claude and reviewed by the project owner.
 - Document-level retrieval metrics, not chunk-level.
 - The judge and the answer model are the same model. Checked against 10 hand-graded answers (31 key facts), where only 2 human grades were "no".
 - Three holdout questions have soft key facts, listed before the run and not fixed: G-004 (terse facts), G-028 (compound facts that go beyond the question), G-032 (the second fact does not check the warning-banner action).
